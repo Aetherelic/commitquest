@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS commits (
   base_xp INTEGER NOT NULL,
   awarded_xp INTEGER NOT NULL,
   imported_at TEXT NOT NULL,
+  quest_eligible INTEGER NOT NULL DEFAULT 1,
   UNIQUE(repository_id, hash)
 );
 
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS tags (
   tagged_at TEXT NOT NULL,
   xp INTEGER NOT NULL DEFAULT 150,
   imported_at TEXT NOT NULL,
+  quest_eligible INTEGER NOT NULL DEFAULT 1,
   UNIQUE(repository_id, name)
 );
 
@@ -70,10 +72,44 @@ CREATE TABLE IF NOT EXISTS achievements (
 );
 `;
 
+function hasColumn(db: CommitQuestDatabase, table: "commits" | "tags", column: string): boolean {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  return rows.some((row) => row.name === column);
+}
+
+function migrateQuestEligibility(db: CommitQuestDatabase): void {
+  if (!hasColumn(db, "commits", "quest_eligible")) {
+    db.exec("ALTER TABLE commits ADD COLUMN quest_eligible INTEGER NOT NULL DEFAULT 1");
+    db.exec(`
+      UPDATE commits
+      SET quest_eligible = CASE
+        WHEN julianday(authored_at) >= julianday((
+          SELECT added_at FROM repositories WHERE repositories.id = commits.repository_id
+        )) THEN 1
+        ELSE 0
+      END
+    `);
+  }
+
+  if (!hasColumn(db, "tags", "quest_eligible")) {
+    db.exec("ALTER TABLE tags ADD COLUMN quest_eligible INTEGER NOT NULL DEFAULT 1");
+    db.exec(`
+      UPDATE tags
+      SET quest_eligible = CASE
+        WHEN julianday(tagged_at) >= julianday((
+          SELECT added_at FROM repositories WHERE repositories.id = tags.repository_id
+        )) THEN 1
+        ELSE 0
+      END
+    `);
+  }
+}
+
 export function openDatabase(): CommitQuestDatabase {
   fs.mkdirSync(getDataDirectory(), { recursive: true });
   const db = new DatabaseSync(getDatabasePath());
   db.exec(SCHEMA);
+  migrateQuestEligibility(db);
   return db;
 }
 
@@ -144,13 +180,14 @@ export function insertCommit(
   db: CommitQuestDatabase,
   repositoryId: number,
   commit: GitCommit,
-  awardedXp: number
+  awardedXp: number,
+  questEligible: boolean
 ): void {
   db.prepare(`
     INSERT OR IGNORE INTO commits(
       repository_id, hash, author_name, author_email, authored_at, subject,
-      type, files_changed, insertions, deletions, base_xp, awarded_xp, imported_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      type, files_changed, insertions, deletions, base_xp, awarded_xp, imported_at, quest_eligible
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     repositoryId,
     commit.hash,
@@ -164,7 +201,8 @@ export function insertCommit(
     commit.deletions,
     commit.baseXp,
     awardedXp,
-    new Date().toISOString()
+    new Date().toISOString(),
+    questEligible ? 1 : 0
   );
 }
 

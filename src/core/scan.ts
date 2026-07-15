@@ -14,6 +14,8 @@ export interface ScanSummary {
   importedCommits: number;
   ignoredCommits: number;
   importedTags: number;
+  historicalCommits: number;
+  historicalTags: number;
   earnedXp: number;
 }
 
@@ -39,6 +41,8 @@ export function scanRepositories(
   const pending: PendingCommit[] = [];
   let ignoredCommits = 0;
   let importedTags = 0;
+  let historicalCommits = 0;
+  let historicalTags = 0;
   let earnedXp = 0;
 
   for (const repository of repositories) {
@@ -59,26 +63,32 @@ export function scanRepositories(
     const bounds = dayBounds(item.commit.authoredAt);
     const stats = getDailyCommitRewardStats(db, bounds.start, bounds.end);
     const awardedXp = calculateAwardedXp(item.commit.baseXp, stats.count, stats.xp);
-    insertCommit(db, item.repository.id, item.commit, awardedXp);
+    const questEligible = new Date(item.commit.authoredAt).getTime() >= new Date(item.repository.addedAt).getTime();
+    insertCommit(db, item.repository.id, item.commit, awardedXp, questEligible);
+    if (!questEligible) historicalCommits += 1;
     earnedXp += awardedXp;
   }
 
   const insertTag = db.prepare(`
-    INSERT OR IGNORE INTO tags(repository_id, name, commit_hash, tagged_at, xp, imported_at)
-    VALUES (?, ?, ?, ?, 150, ?)
+    INSERT OR IGNORE INTO tags(
+      repository_id, name, commit_hash, tagged_at, xp, imported_at, quest_eligible
+    ) VALUES (?, ?, ?, ?, 150, ?, ?)
   `);
 
   for (const repository of repositories) {
     for (const tag of readTags(repository.path)) {
+      const questEligible = new Date(tag.taggedAt).getTime() >= new Date(repository.addedAt).getTime();
       const result = insertTag.run(
         repository.id,
         tag.name,
         tag.commitHash,
         tag.taggedAt,
-        new Date().toISOString()
+        new Date().toISOString(),
+        questEligible ? 1 : 0
       );
       if (result.changes > 0) {
         importedTags += 1;
+        if (!questEligible) historicalTags += 1;
         earnedXp += 150;
       }
     }
@@ -90,6 +100,8 @@ export function scanRepositories(
     importedCommits: pending.length,
     ignoredCommits,
     importedTags,
+    historicalCommits,
+    historicalTags,
     earnedXp
   };
 }

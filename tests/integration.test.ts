@@ -70,6 +70,8 @@ describe("repository scanning", () => {
     const firstXp = totalXp(db);
     expect(first.importedCommits).toBe(2);
     expect(first.importedTags).toBe(1);
+    expect(first.historicalCommits).toBe(2);
+    expect(first.historicalTags).toBe(1);
     expect(databaseStats(db).commits).toBe(2);
     expect(firstXp).toBeGreaterThanOrEqual(205);
 

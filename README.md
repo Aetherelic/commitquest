@@ -58,6 +58,7 @@ CommitQuest is deliberately **not** a developer ranking system. Commit counts an
 - Prevent duplicate rewards with SQLite constraints
 - Apply diminishing XP and a daily cap to discourage farming
 - Generate daily, weekly, and monthly quests
+- Award XP for imported history without letting it complete active quests
 - Persist completed quest rewards
 - Unlock persistent achievements
 - Calculate current and longest streaks
@@ -111,6 +112,8 @@ By default, only commits matching that email earn XP. For a repository where eve
 ```bash
 cq scan --all-authors
 ```
+
+Commits and releases created before a campaign was added still earn their normal historical XP and can unlock long-term achievements. They do not advance the current daily, weekly, or monthly quest board; only activity created after `cq add` counts toward active quests.
 
 ## Commands
 

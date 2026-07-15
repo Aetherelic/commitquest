@@ -46,6 +46,17 @@ export function scanCommand(options: ScanOptions): void {
   if (summary.ignoredCommits > 0 && !options.allAuthors) {
     console.log(chalk.dim(`  Ignored ${summary.ignoredCommits} commits from other authors.`));
   }
+  if (summary.historicalCommits > 0 || summary.historicalTags > 0) {
+    const parts = [
+      summary.historicalCommits > 0
+        ? `${summary.historicalCommits} historical commit${summary.historicalCommits === 1 ? "" : "s"}`
+        : null,
+      summary.historicalTags > 0
+        ? `${summary.historicalTags} historical release${summary.historicalTags === 1 ? "" : "s"}`
+        : null
+    ].filter((value): value is string => value !== null);
+    console.log(chalk.dim(`  ${parts.join(" and ")} earned XP but did not advance active quests.`));
+  }
 
   for (const quest of newlyCompletedQuests) {
     console.log(`\n${chalk.green("◆ QUEST COMPLETE")} ${chalk.bold(quest.title)} ${chalk.magenta(`+${quest.rewardXp} XP`)}`);

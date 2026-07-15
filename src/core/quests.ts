@@ -1,4 +1,4 @@
-import type { CommitQuestDatabase } from "../data/database.js";
+import { getMeta, setMeta, type CommitQuestDatabase } from "../data/database.js";
 import type { Quest } from "./types.js";
 import { isoWeekKey, localDateKey, startOfMonth, startOfWeek } from "./dates.js";
 
@@ -8,8 +8,8 @@ interface CountRow {
 
 function countCommits(db: CommitQuestDatabase, start: Date, end: Date, type?: string): number {
   const query = type
-    ? "SELECT COUNT(*) AS count FROM commits WHERE authored_at >= ? AND authored_at < ? AND type = ?"
-    : "SELECT COUNT(*) AS count FROM commits WHERE authored_at >= ? AND authored_at < ?";
+    ? "SELECT COUNT(*) AS count FROM commits WHERE quest_eligible = 1 AND authored_at >= ? AND authored_at < ? AND type = ?"
+    : "SELECT COUNT(*) AS count FROM commits WHERE quest_eligible = 1 AND authored_at >= ? AND authored_at < ?";
   const params = type ? [start.toISOString(), end.toISOString(), type] : [start.toISOString(), end.toISOString()];
   const row = db.prepare(query).get(...params) as unknown as CountRow;
   return row.count;
@@ -17,7 +17,7 @@ function countCommits(db: CommitQuestDatabase, start: Date, end: Date, type?: st
 
 function countTags(db: CommitQuestDatabase, start: Date, end: Date): number {
   const row = db.prepare(
-    "SELECT COUNT(*) AS count FROM tags WHERE tagged_at >= ? AND tagged_at < ?"
+    "SELECT COUNT(*) AS count FROM tags WHERE quest_eligible = 1 AND tagged_at >= ? AND tagged_at < ?"
   ).get(start.toISOString(), end.toISOString()) as unknown as CountRow;
   return row.count;
 }
@@ -99,8 +99,22 @@ export function buildQuests(db: CommitQuestDatabase, now = new Date()): Quest[] 
   ];
 }
 
+const QUEST_ELIGIBILITY_RECONCILED_KEY = "quest-eligibility-v1-reconciled";
+
+function reconcileCurrentQuestRewards(db: CommitQuestDatabase, quests: Quest[], now: Date): void {
+  if (getMeta(db, QUEST_ELIGIBILITY_RECONCILED_KEY)) return;
+
+  const removeReward = db.prepare("DELETE FROM quest_rewards WHERE quest_key = ?");
+  for (const quest of quests) {
+    if (!quest.complete) removeReward.run(quest.key);
+  }
+
+  setMeta(db, QUEST_ELIGIBILITY_RECONCILED_KEY, now.toISOString());
+}
+
 export function syncQuestRewards(db: CommitQuestDatabase, now = new Date()): Quest[] {
   const quests = buildQuests(db, now);
+  reconcileCurrentQuestRewards(db, quests, now);
   const insert = db.prepare(`
     INSERT OR IGNORE INTO quest_rewards(quest_key, title, reward_xp, awarded_at)
     VALUES (?, ?, ?, ?)
