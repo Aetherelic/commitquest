@@ -10,7 +10,13 @@ npm run check
 npm run dev -- --help
 ```
 
-Use focused commits and add tests for changes to XP, levels, streaks, quests, achievements, Git parsing, or persistence.
+Use focused conventional commits and add tests for changes to XP, levels, streaks, quests, achievements, Git parsing, or persistence. CommitQuest uses exact prefixes such as `feat:`, `fix:`, `docs:`, and `test:` for typed quest progress, so commit messages should describe the actual patch rather than reuse a generic subject.
+
+You can preview classification before committing:
+
+```bash
+cq quest check "feat: add quest guidance" --repo commitquest
+```
 
 ## Pull requests
 

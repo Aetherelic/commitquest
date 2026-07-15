@@ -54,6 +54,12 @@ export type CustomQuestObjective =
   | "docs"
   | "test"
   | "refactor"
+  | "perf"
+  | "build"
+  | "ci"
+  | "chore"
+  | "style"
+  | "revert"
   | "release"
   | "manual";
 

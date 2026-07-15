@@ -16,6 +16,7 @@ import { hookStatusCommand, installHookCommand, removeHookCommand } from "./comm
 import {
   abandonCustomQuestCommand,
   addCustomQuestCommand,
+  checkCustomQuestCommand,
   completeCustomQuestCommand,
   CUSTOM_QUEST_OBJECTIVES,
   listCustomQuestCommand,
@@ -99,6 +100,12 @@ customQuest
   .option("--all", "include abandoned and expired quests")
   .option("--repo <name-or-path>", "filter by campaign")
   .action(listCustomQuestCommand);
+
+customQuest
+  .command("check <message>")
+  .description("Preview commit classification and custom quest progress")
+  .option("--repo <name-or-path>", "check against one campaign")
+  .action(checkCustomQuestCommand);
 
 customQuest
   .command("show <id>")

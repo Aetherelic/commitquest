@@ -66,6 +66,8 @@ CommitQuest is deliberately **not** a developer ranking system. Commit counts an
 - Enable live XP rewards immediately after each Git commit
 - Create campaign-specific or global custom quests with automatic Git objectives
 - Track commit types, releases, manual milestones, XP rewards, and optional deadlines
+- Explain when a generic commit did not match an active typed quest
+- Preview commit classification and quest progress before committing
 
 ## Requirements
 
@@ -138,7 +140,7 @@ cq quest add "Strengthen the test suite" \
   --deadline 2026-08-01
 ```
 
-Supported automatic objectives are `commit`, `feat`, `fix`, `docs`, `test`, `refactor`, and `release`. Manual milestones are completed explicitly:
+Supported automatic objectives are `commit`, `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `build`, `ci`, `chore`, `style`, `revert`, and `release`. Manual milestones are completed explicitly:
 
 ```bash
 cq quest add "Design the dashboard" --type manual --xp 100
@@ -146,6 +148,15 @@ cq quest complete 3
 ```
 
 Manage the quest board with `cq quest list`, `cq quest show <id>`, and `cq quest abandon <id>`. Automatic quests progress during normal `cq scan` runs and post-commit hook scans.
+
+Typed quests depend on conventional commit prefixes. Preview a message before committing:
+
+```bash
+cq quest check "feat: add commit guidance" --repo commitquest
+cq quest check "add commit guidance" --repo commitquest
+```
+
+The second command is classified as a generic commit and shows which typed quests it would miss, along with corrected message suggestions. Creating a typed custom quest also prints an example commit subject.
 
 ### Live rewards
 
@@ -155,7 +166,7 @@ Enable the optional post-commit hook for a tracked campaign:
 cq hook install ~/Projects/your-project
 ```
 
-Your next `git commit` will immediately show earned XP, completed quests, and unlocked achievements without requiring a manual scan. CommitQuest preserves an existing `post-commit` hook behind its wrapper and restores it when you run:
+Your next `git commit` will immediately show earned XP, completed quests, and unlocked achievements without requiring a manual scan. When a generic commit fails to advance an active typed custom quest, the hook explains the expected type and suggests a corrected conventional subject for the next commit. CommitQuest preserves an existing `post-commit` hook behind its wrapper and restores it when you run:
 
 ```bash
 cq hook remove ~/Projects/your-project
@@ -173,6 +184,7 @@ cq hook remove ~/Projects/your-project
 | `cq quests` | Open the current quest board |
 | `cq quest add <title>` | Create a custom campaign or global quest |
 | `cq quest list` | List active and completed custom quests |
+| `cq quest check <message>` | Preview classification and custom quest progress |
 | `cq quest show <id>` | Inspect one custom quest |
 | `cq quest complete <id>` | Complete a manual milestone |
 | `cq quest abandon <id>` | Abandon an active custom quest |

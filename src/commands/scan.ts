@@ -4,13 +4,54 @@ import { getProfile } from "../core/profile.js";
 import { scanRepositories } from "../core/scan.js";
 import { syncQuestRewards } from "../core/quests.js";
 import { syncAchievements } from "../core/achievements.js";
-import { syncCustomQuestRewards } from "../core/custom-quests.js";
+import {
+  analyzeCustomQuestCommit,
+  customQuestObjectiveLabel,
+  syncCustomQuestRewards,
+  type CustomQuestCommitMatch
+} from "../core/custom-quests.js";
 import { success, warning } from "../ui/render.js";
 
 export interface ScanOptions {
   repo?: string;
   allAuthors?: boolean;
   hook?: boolean;
+}
+
+interface CommitGuidance {
+  repositoryName: string;
+  hash: string;
+  subject: string;
+  missed: CustomQuestCommitMatch[];
+}
+
+function buildCommitGuidance(
+  customQuests: ReturnType<typeof syncCustomQuestRewards>,
+  details: ReturnType<typeof scanRepositories>["importedCommitDetails"]
+): CommitGuidance[] {
+  return details
+    .filter((commit) => commit.questEligible && commit.type === "commit")
+    .map((commit) => ({
+      repositoryName: commit.repositoryName,
+      hash: commit.hash,
+      subject: commit.subject,
+      missed: analyzeCustomQuestCommit(customQuests, commit).missed
+    }))
+    .filter((guidance) => guidance.missed.length > 0);
+}
+
+function printCommitGuidance(guidance: CommitGuidance, indent = ""): void {
+  const shortHash = guidance.hash.slice(0, 7);
+  console.log(`${indent}${chalk.yellow("◇ QUEST TYPE MISMATCH")} ${chalk.bold(`${shortHash} ${guidance.subject}`)} ${chalk.dim(`· ${guidance.repositoryName}`)}`);
+  for (const match of guidance.missed.slice(0, 3)) {
+    console.log(`${indent}  ${chalk.dim(`#${match.quest.id} ${match.quest.title} expects ${customQuestObjectiveLabel(match.quest.objectiveType)}.`)}`);
+    console.log(`${indent}  ${chalk.dim(`Try next time: ${match.suggestedSubject}`)}`);
+  }
+  if (guidance.missed.length > 3) {
+    console.log(`${indent}  ${chalk.dim(`And ${guidance.missed.length - 3} more typed quests. Preview messages with cq quest check <message>.`)}`);
+  } else {
+    console.log(`${indent}  ${chalk.dim("Preview a message first with cq quest check <message>.")}`);
+  }
 }
 
 export function scanCommand(options: ScanOptions): void {
@@ -47,6 +88,7 @@ export function scanCommand(options: ScanOptions): void {
   const newlyCompletedCustomQuests = customQuests.filter(
     (quest) => quest.complete && !questsBefore.has(`custom-${quest.id}`)
   );
+  const commitGuidance = buildCommitGuidance(customQuests, summary.importedCommitDetails);
   const unlockedAchievements = syncAchievements(db);
 
   if (options.hook) {
@@ -58,6 +100,7 @@ export function scanCommand(options: ScanOptions): void {
       || summary.importedTags > 0
       || newlyCompletedQuests.length > 0
       || newlyCompletedCustomQuests.length > 0
+      || commitGuidance.length > 0
       || unlockedAchievements.length > 0;
 
     if (!hasUpdate) {
@@ -79,6 +122,10 @@ export function scanCommand(options: ScanOptions): void {
 
     for (const achievement of unlockedAchievements) {
       console.log(`${chalk.cyan("  ◆ ACHIEVEMENT UNLOCKED")} ${chalk.bold(achievement.title)} ${chalk.magenta(`+${achievement.rewardXp} XP`)}`);
+    }
+
+    for (const guidance of commitGuidance) {
+      printCommitGuidance(guidance, "  ");
     }
 
     console.log(chalk.dim("  Run cq status to view your journey."));
@@ -114,6 +161,14 @@ export function scanCommand(options: ScanOptions): void {
   for (const achievement of unlockedAchievements) {
     console.log(`\n${chalk.cyan("◆ ACHIEVEMENT UNLOCKED")} ${chalk.bold(achievement.title)} ${chalk.magenta(`+${achievement.rewardXp} XP`)}`);
     console.log(`  ${chalk.dim(achievement.description)}`);
+  }
+
+  for (const guidance of commitGuidance.slice(0, 3)) {
+    console.log();
+    printCommitGuidance(guidance);
+  }
+  if (commitGuidance.length > 3) {
+    console.log(chalk.dim(`\n${commitGuidance.length - 3} more generic commits did not advance typed custom quests.`));
   }
 
   console.log(chalk.dim("\nView your profile with cq status"));

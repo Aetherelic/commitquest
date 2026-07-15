@@ -69,6 +69,8 @@ describe("repository scanning", () => {
     const first = scanRepositories(db, [repository], "quest@example.com");
     const firstXp = totalXp(db);
     expect(first.importedCommits).toBe(2);
+    expect(first.importedCommitDetails).toHaveLength(2);
+    expect(first.importedCommitDetails.map((commit) => commit.type)).toEqual(["docs", "feat"]);
     expect(first.importedTags).toBe(1);
     expect(first.historicalCommits).toBe(2);
     expect(first.historicalTags).toBe(1);
@@ -77,6 +79,7 @@ describe("repository scanning", () => {
 
     const second = scanRepositories(db, [repository], "quest@example.com");
     expect(second.importedCommits).toBe(0);
+    expect(second.importedCommitDetails).toEqual([]);
     expect(second.importedTags).toBe(0);
     expect(totalXp(db)).toBe(firstXp);
     db.close();

@@ -7,20 +7,22 @@ import {
   openDatabase
 } from "../data/database.js";
 import {
+  analyzeCustomQuestCommit,
   completeManualCustomQuest,
+  CUSTOM_QUEST_COMMIT_OBJECTIVES,
+  customQuestObjectiveLabel,
   customQuestStates,
+  suggestedConventionalSubject,
   syncCustomQuestRewards
 } from "../core/custom-quests.js";
-import type { CustomQuestObjective, CustomQuestState } from "../core/types.js";
+import type { CommitType, CustomQuestObjective, CustomQuestState, RepositoryRecord } from "../core/types.js";
 import { renderCustomQuests, success, warning } from "../ui/render.js";
+import { calculateBaseXp, classifyCommit } from "../core/xp.js";
+import { getRepositoryRoot, isGitRepository } from "../git/git.js";
 
 export const CUSTOM_QUEST_OBJECTIVES: CustomQuestObjective[] = [
   "commit",
-  "feat",
-  "fix",
-  "docs",
-  "test",
-  "refactor",
+  ...CUSTOM_QUEST_COMMIT_OBJECTIVES,
   "release",
   "manual"
 ];
@@ -35,6 +37,10 @@ export interface AddCustomQuestOptions {
 
 export interface ListCustomQuestOptions {
   all?: boolean;
+  repo?: string;
+}
+
+export interface CheckCustomQuestOptions {
   repo?: string;
 }
 
@@ -104,7 +110,11 @@ export function addCustomQuestCommand(title: string, options: AddCustomQuestOpti
   console.log(success(`Custom quest created: ${chalk.bold(`#${quest.id} ${quest.title}`)}`));
   console.log();
   printQuest(state);
-  console.log(chalk.dim(`\nTrack it with cq quest show ${quest.id}`));
+  const suggestion = suggestedConventionalSubject(options.type, trimmedTitle);
+  if (suggestion) {
+    console.log(chalk.dim(`\nSuggested commit: ${suggestion}`));
+  }
+  console.log(chalk.dim(`Track it with cq quest show ${quest.id}`));
   db.close();
 }
 
@@ -173,4 +183,76 @@ export function abandonCustomQuestCommand(idValue: string): void {
   abandonCustomQuest(db, id, new Date().toISOString());
   console.log(success(`Quest abandoned: ${chalk.bold(`#${id} ${quest.title}`)}`));
   db.close();
+}
+
+function resolveCheckRepository(
+  db: ReturnType<typeof openDatabase>,
+  selector: string | undefined
+): RepositoryRecord | null {
+  if (selector) {
+    const repository = findRepository(db, selector);
+    if (!repository) throw new Error(`Campaign not found: ${selector}`);
+    return repository;
+  }
+
+  try {
+    if (!isGitRepository(process.cwd())) return null;
+    return findRepository(db, getRepositoryRoot(process.cwd()));
+  } catch {
+    return null;
+  }
+}
+
+function classificationLabel(type: CommitType): string {
+  if (type === "commit") return "generic commit";
+  if (type === "merge") return "merge commit";
+  return customQuestObjectiveLabel(type);
+}
+
+export function checkCustomQuestCommand(
+  message: string,
+  options: CheckCustomQuestOptions = {}
+): void {
+  const subject = message.trim();
+  if (!subject) throw new Error("Commit message cannot be empty.");
+
+  const db = openDatabase();
+  try {
+    const repository = resolveCheckRepository(db, options.repo);
+    const classification = classifyCommit(subject);
+    const states = customQuestStates(db);
+    const analysis = analyzeCustomQuestCommit(states, {
+      repositoryId: repository?.id ?? -1,
+      type: classification.type,
+      subject
+    });
+
+    console.log(chalk.bold.magenta("COMMIT CHECK\n"));
+    console.log(`${chalk.bold("Message:")} ${subject}`);
+    console.log(`${chalk.bold("Classification:")} ${classificationLabel(classification.type)}`);
+    console.log(`${chalk.bold("Base type reward:")} ${chalk.magenta(`+${calculateBaseXp(classification.type, 0, classification.breaking)} XP`)} ${chalk.dim("before file-size, diminishing, and daily-cap adjustments")}`);
+    console.log(`${chalk.bold("Scope:")} ${repository ? repository.name : "global quests only"}`);
+
+    if (analysis.matching.length > 0) {
+      console.log(chalk.bold.green("\nWOULD ADVANCE"));
+      for (const match of analysis.matching) {
+        console.log(`${chalk.green("◆")} ${chalk.bold(`#${match.quest.id} ${match.quest.title}`)} ${chalk.dim(`· ${customQuestObjectiveLabel(match.quest.objectiveType)}`)}`);
+      }
+    } else {
+      console.log(chalk.dim("\nNo active custom quest would advance from this message."));
+    }
+
+    if (analysis.missed.length > 0) {
+      const heading = classification.type === "commit"
+        ? "TYPED QUESTS THIS MESSAGE WOULD MISS"
+        : "OTHER ACTIVE TYPED QUESTS";
+      console.log(chalk.bold.yellow(`\n${heading}`));
+      for (const match of analysis.missed) {
+        console.log(`${chalk.yellow("◇")} ${chalk.bold(`#${match.quest.id} ${match.quest.title}`)} ${chalk.dim(`expects ${customQuestObjectiveLabel(match.quest.objectiveType)}`)}`);
+        console.log(`  ${chalk.dim(`Use: ${match.suggestedSubject}`)}`);
+      }
+    }
+  } finally {
+    db.close();
+  }
 }

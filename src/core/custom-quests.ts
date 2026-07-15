@@ -6,10 +6,98 @@ import {
   type CommitQuestDatabase
 } from "../data/database.js";
 import type {
+  CommitType,
   CustomQuestObjective,
   CustomQuestRecord,
   CustomQuestState
 } from "./types.js";
+
+export const CUSTOM_QUEST_COMMIT_OBJECTIVES = [
+  "feat",
+  "fix",
+  "docs",
+  "test",
+  "refactor",
+  "perf",
+  "build",
+  "ci",
+  "chore",
+  "style",
+  "revert"
+] as const satisfies readonly CustomQuestObjective[];
+
+export type TypedCustomQuestObjective = typeof CUSTOM_QUEST_COMMIT_OBJECTIVES[number];
+
+export interface CustomQuestCommitMatch {
+  quest: CustomQuestState;
+  suggestedSubject: string;
+}
+
+export interface CustomQuestCommitAnalysis {
+  matching: CustomQuestCommitMatch[];
+  missed: CustomQuestCommitMatch[];
+}
+
+export function isTypedCustomQuestObjective(
+  objective: CustomQuestObjective
+): objective is TypedCustomQuestObjective {
+  return (CUSTOM_QUEST_COMMIT_OBJECTIVES as readonly string[]).includes(objective);
+}
+
+export function customQuestObjectiveLabel(objective: CustomQuestObjective): string {
+  if (objective === "commit") return "any commit";
+  if (objective === "release") return "tagged release";
+  if (objective === "manual") return "manual milestone";
+  return `${objective} commit`;
+}
+
+function suggestionBody(objective: TypedCustomQuestObjective, subject: string): string {
+  const trimmed = subject.trim();
+  const aliases = objective === "feat"
+    ? "feature|feat"
+    : objective === "fix"
+      ? "bugfix|fix"
+      : objective;
+  const withoutNearMissPrefix = trimmed.replace(
+    new RegExp(`^(?:${aliases})(?:\\([^)]+\\))?!?\\s*(?::|-)?\\s*`, "i"),
+    ""
+  ).trim();
+  const body = withoutNearMissPrefix || trimmed || "describe the change";
+  return body.charAt(0).toLowerCase() + body.slice(1);
+}
+
+export function suggestedConventionalSubject(
+  objective: CustomQuestObjective,
+  subject: string
+): string | null {
+  if (!isTypedCustomQuestObjective(objective)) return null;
+  return `${objective}: ${suggestionBody(objective, subject)}`;
+}
+
+export function analyzeCustomQuestCommit(
+  quests: CustomQuestState[],
+  input: { repositoryId: number; type: CommitType; subject: string }
+): CustomQuestCommitAnalysis {
+  const relevant = quests.filter((quest) => {
+    if (quest.status !== "active") return false;
+    if (quest.repositoryId !== null && quest.repositoryId !== input.repositoryId) return false;
+    return quest.objectiveType === "commit" || isTypedCustomQuestObjective(quest.objectiveType);
+  });
+
+  const toMatch = (quest: CustomQuestState): CustomQuestCommitMatch => ({
+    quest,
+    suggestedSubject: suggestedConventionalSubject(quest.objectiveType, input.subject) ?? input.subject
+  });
+
+  return {
+    matching: relevant
+      .filter((quest) => quest.objectiveType === "commit" || quest.objectiveType === input.type)
+      .map(toMatch),
+    missed: relevant
+      .filter((quest) => quest.objectiveType !== "commit" && quest.objectiveType !== input.type)
+      .map(toMatch)
+  };
+}
 
 function plural(value: number, singular: string, pluralForm = `${singular}s`): string {
   return value === 1 ? singular : pluralForm;

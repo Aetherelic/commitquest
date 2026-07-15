@@ -16,6 +16,7 @@ import {
   syncCustomQuestRewards
 } from "../src/core/custom-quests.js";
 import type { GitCommit } from "../src/core/types.js";
+import type { CustomQuestObjective } from "../src/core/types.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -49,6 +50,37 @@ afterEach(() => {
 });
 
 describe("custom quests", () => {
+  it.each([
+    "perf",
+    "build",
+    "ci",
+    "chore",
+    "style",
+    "revert"
+  ] satisfies CustomQuestObjective[])("supports %s commit objectives", (objectiveType) => {
+    const db = createDatabase();
+    const repository = addRepository(db, {
+      name: objectiveType,
+      path: `/tmp/${objectiveType}`,
+      defaultBranch: "main"
+    });
+    const quest = createCustomQuest(db, {
+      title: `Complete ${objectiveType} work`,
+      repositoryId: repository.id,
+      objectiveType,
+      target: 1,
+      rewardXp: 40,
+      deadlineAt: null
+    });
+
+    insertCommit(db, repository.id, commit(`${objectiveType}-commit`, objectiveType), 10, true);
+    const state = syncCustomQuestRewards(db).find((item) => item.id === quest.id);
+
+    expect(state?.status).toBe("complete");
+    expect(state?.progress).toBe(1);
+    db.close();
+  });
+
   it("tracks only activity created after the quest baseline", () => {
     const db = createDatabase();
     const repository = addRepository(db, {

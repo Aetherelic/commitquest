@@ -7,12 +7,23 @@ import {
 } from "../data/database.js";
 import { calculateAwardedXp } from "./xp.js";
 import { isQuestEligible } from "./dates.js";
-import type { GitCommit, RepositoryRecord } from "./types.js";
+import type { CommitType, GitCommit, RepositoryRecord } from "./types.js";
 import { readCommits, readTags } from "../git/git.js";
+
+export interface ImportedCommitSummary {
+  repositoryId: number;
+  repositoryName: string;
+  hash: string;
+  subject: string;
+  type: CommitType;
+  awardedXp: number;
+  questEligible: boolean;
+}
 
 export interface ScanSummary {
   repositories: number;
   importedCommits: number;
+  importedCommitDetails: ImportedCommitSummary[];
   ignoredCommits: number;
   importedTags: number;
   historicalCommits: number;
@@ -40,6 +51,7 @@ export function scanRepositories(
   allAuthors = false
 ): ScanSummary {
   const pending: PendingCommit[] = [];
+  const importedCommitDetails: ImportedCommitSummary[] = [];
   let ignoredCommits = 0;
   let importedTags = 0;
   let historicalCommits = 0;
@@ -66,6 +78,15 @@ export function scanRepositories(
     const awardedXp = calculateAwardedXp(item.commit.baseXp, stats.count, stats.xp);
     const questEligible = isQuestEligible(item.commit.authoredAt, item.repository.addedAt);
     insertCommit(db, item.repository.id, item.commit, awardedXp, questEligible);
+    importedCommitDetails.push({
+      repositoryId: item.repository.id,
+      repositoryName: item.repository.name,
+      hash: item.commit.hash,
+      subject: item.commit.subject,
+      type: item.commit.type,
+      awardedXp,
+      questEligible
+    });
     if (!questEligible) historicalCommits += 1;
     earnedXp += awardedXp;
   }
@@ -99,6 +120,7 @@ export function scanRepositories(
   return {
     repositories: repositories.length,
     importedCommits: pending.length,
+    importedCommitDetails,
     ignoredCommits,
     importedTags,
     historicalCommits,
