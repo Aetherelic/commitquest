@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import chalk from "chalk";
 import { initCommand } from "./commands/init.js";
 import { addCommand } from "./commands/add.js";
@@ -12,6 +12,7 @@ import { questsCommand } from "./commands/quests.js";
 import { achievementsCommand } from "./commands/achievements.js";
 import { profileCommand } from "./commands/profile.js";
 import { doctorCommand } from "./commands/doctor.js";
+import { hookStatusCommand, installHookCommand, removeHookCommand } from "./commands/hook.js";
 
 const program = new Command();
 
@@ -34,12 +35,13 @@ program
   .option("--name <name>", "custom campaign name")
   .action(addCommand);
 
-program
+const scan = program
   .command("scan")
   .description("Scan tracked repositories for new commits and releases")
   .option("--repo <name-or-path>", "scan one campaign")
-  .option("--all-authors", "award XP for every author in the repository")
-  .action(scanCommand);
+  .option("--all-authors", "award XP for every author in the repository");
+scan.addOption(new Option("--hook", "use concise post-commit output").hideHelp());
+scan.action(scanCommand);
 
 program
   .command("status")
@@ -77,6 +79,27 @@ program
   .option("--name <name>", "developer name")
   .option("--email <email>", "Git author email used to award XP")
   .action(profileCommand);
+
+const hook = program
+  .command("hook")
+  .description("Manage automatic post-commit rewards");
+
+hook
+  .command("install [path]")
+  .description("Enable automatic scanning after commits")
+  .action(installHookCommand);
+
+hook
+  .command("remove [path]")
+  .description("Disable automatic scanning and restore any original hook")
+  .action(removeHookCommand);
+
+hook
+  .command("status [path]")
+  .description("Show whether live rewards are enabled")
+  .action(hookStatusCommand);
+
+hook.action(() => hookStatusCommand("."));
 
 program
   .command("doctor")

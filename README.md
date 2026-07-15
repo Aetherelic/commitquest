@@ -63,6 +63,7 @@ CommitQuest is deliberately **not** a developer ranking system. Commit counts an
 - Unlock persistent achievements
 - Calculate current and longest streaks
 - Keep every byte of activity data on your own machine
+- Enable live XP rewards immediately after each Git commit
 
 ## Requirements
 
@@ -99,6 +100,7 @@ cq init
 cq add ~/Projects/your-project
 cq scan
 cq status
+cq hook install ~/Projects/your-project
 ```
 
 CommitQuest reads your global Git name and email during `cq init`. You can set them explicitly:
@@ -115,6 +117,20 @@ cq scan --all-authors
 
 Commits and releases created before a campaign was added still earn their normal historical XP and can unlock long-term achievements. They do not advance the current daily, weekly, or monthly quest board; only activity created after `cq add` counts toward active quests.
 
+### Live rewards
+
+Enable the optional post-commit hook for a tracked campaign:
+
+```bash
+cq hook install ~/Projects/your-project
+```
+
+Your next `git commit` will immediately show earned XP, completed quests, and unlocked achievements without requiring a manual scan. CommitQuest preserves an existing `post-commit` hook behind its wrapper and restores it when you run:
+
+```bash
+cq hook remove ~/Projects/your-project
+```
+
 ## Commands
 
 | Command | Purpose |
@@ -128,6 +144,9 @@ Commits and releases created before a campaign was added still earn their normal
 | `cq achievements` | View locked and unlocked achievements |
 | `cq repos` | List tracked campaigns |
 | `cq profile` | View or change the rewarded Git identity |
+| `cq hook install [path]` | Enable automatic rewards after each commit |
+| `cq hook status [path]` | Check live-reward hook status |
+| `cq hook remove [path]` | Remove the wrapper and restore any original hook |
 | `cq doctor` | Check Node, Git, profile, database, and repository health |
 
 ## XP rules

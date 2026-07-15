@@ -24,6 +24,10 @@ export function resolveRepositoryPath(inputPath: string): string {
   return fs.realpathSync(path.resolve(inputPath));
 }
 
+export function getRepositoryRoot(repositoryPath: string): string {
+  return fs.realpathSync(runGit(repositoryPath, ["rev-parse", "--show-toplevel"]));
+}
+
 export function getRepositoryName(repositoryPath: string): string {
   try {
     const topLevel = runGit(repositoryPath, ["rev-parse", "--show-toplevel"]);

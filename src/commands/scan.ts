@@ -9,6 +9,7 @@ import { success, warning } from "../ui/render.js";
 export interface ScanOptions {
   repo?: string;
   allAuthors?: boolean;
+  hook?: boolean;
 }
 
 export function scanCommand(options: ScanOptions): void {
@@ -27,9 +28,11 @@ export function scanCommand(options: ScanOptions): void {
     : listRepositories(db);
 
   if (repositories.length === 0) {
-    console.log(warning(options.repo ? `Campaign not found: ${options.repo}` : "No campaigns tracked yet. Add one with cq add <path>."));
+    if (!options.hook) {
+      console.log(warning(options.repo ? `Campaign not found: ${options.repo}` : "No campaigns tracked yet. Add one with cq add <path>."));
+      process.exitCode = 1;
+    }
     db.close();
-    process.exitCode = 1;
     return;
   }
 
@@ -40,6 +43,37 @@ export function scanCommand(options: ScanOptions): void {
   const quests = syncQuestRewards(db);
   const newlyCompletedQuests = quests.filter((quest) => quest.complete && !questsBefore.has(quest.key));
   const unlockedAchievements = syncAchievements(db);
+
+  if (options.hook) {
+    const bonusXp = newlyCompletedQuests.reduce((total, quest) => total + quest.rewardXp, 0)
+      + unlockedAchievements.reduce((total, achievement) => total + achievement.rewardXp, 0);
+    const totalReward = summary.earnedXp + bonusXp;
+    const hasUpdate = summary.importedCommits > 0
+      || summary.importedTags > 0
+      || newlyCompletedQuests.length > 0
+      || unlockedAchievements.length > 0;
+
+    if (!hasUpdate) {
+      db.close();
+      return;
+    }
+
+    const campaign = repositories[0];
+    console.log(`\n${chalk.magenta("⚔ COMMITQUEST")} ${chalk.bold(`+${totalReward} XP`)}`);
+    console.log(chalk.dim(`  ${summary.importedCommits} commit${summary.importedCommits === 1 ? "" : "s"} · ${summary.importedTags} release${summary.importedTags === 1 ? "" : "s"} · ${campaign?.name ?? "campaign"}`));
+
+    for (const quest of newlyCompletedQuests) {
+      console.log(`${chalk.green("  ◆ QUEST COMPLETE")} ${chalk.bold(quest.title)} ${chalk.magenta(`+${quest.rewardXp} XP`)}`);
+    }
+
+    for (const achievement of unlockedAchievements) {
+      console.log(`${chalk.cyan("  ◆ ACHIEVEMENT UNLOCKED")} ${chalk.bold(achievement.title)} ${chalk.magenta(`+${achievement.rewardXp} XP`)}`);
+    }
+
+    console.log(chalk.dim("  Run cq status to view your journey."));
+    db.close();
+    return;
+  }
 
   console.log(success(`Scanned ${summary.repositories} campaign${summary.repositories === 1 ? "" : "s"}.`));
   console.log(`  ${chalk.bold(summary.importedCommits)} new commits · ${chalk.bold(summary.importedTags)} new releases · ${chalk.magenta(`+${summary.earnedXp} XP`)}`);
