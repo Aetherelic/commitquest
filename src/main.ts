@@ -12,6 +12,7 @@ import { questsCommand } from "./commands/quests.js";
 import { achievementsCommand } from "./commands/achievements.js";
 import { profileCommand } from "./commands/profile.js";
 import { doctorCommand } from "./commands/doctor.js";
+import { dashboardCommand } from "./commands/dashboard.js";
 import { hookStatusCommand, installHookCommand, removeHookCommand } from "./commands/hook.js";
 import {
   abandonCustomQuestCommand,
@@ -159,11 +160,17 @@ hook
 hook.action(() => hookStatusCommand("."));
 
 program
+  .command("play")
+  .alias("ui")
+  .description("Open the interactive CommitQuest game")
+  .action(dashboardCommand);
+
+program
   .command("doctor")
   .description("Check CommitQuest, Git, profile, and campaign health")
   .action(doctorCommand);
 
-program.action(() => statusCommand());
+program.action(dashboardCommand);
 
 program.parseAsync(process.argv).catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);

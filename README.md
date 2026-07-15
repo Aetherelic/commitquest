@@ -17,33 +17,28 @@ A local-first Git adventure that turns real development progress into XP, levels
 
 ## What it feels like
 
+Running `cq` opens the full interactive game:
+
 ```text
-╭──────────────────────────────────────────╮
-│  COMMITQUEST                             │
-│  Level up by shipping real work.         │
-╰──────────────────────────────────────────╯
-
-Aetherelic · developer@example.com
-
-PROGRESS
-Level 5 — Repository Ranger
-██████████████████░░░░░░░░░░  136/400 XP
-1,186 total XP · 264 XP to next level
-
-JOURNEY
-4 day current streak · 11 day best
-37 commits · 3 campaigns · 2 releases
-6 achievements · 8 quests completed
-
-ACTIVE QUESTS
-◆ First Step · Daily +25 XP
-  ━━━━━━━━━━━━━━  claimed
-  Make one meaningful commit today.
-
-◇ Bug Hunt · Weekly +60 XP
-  ━━━━━━━───────  1/2
-  Land two bug-fix commits this week.
+╭─ COMMITQUEST ───────────────────────────────────────────────────────────────╮
+│Aetherelic · 2 campaigns                              Level 4 · Code Explorer│
+│██████████████░░░░░░░░  145/325 XP                3 day streak · 670 total XP│
+├─ HOME ─────────────────────────────────────────────────────────────────────┤
+│TODAY'S JOURNEY                                                            │
+│                                                                           │
+│╭─ Main Menu ─────────────╮  ╭─ Selected ─────────────────────────────────╮│
+││▶ Quest Board            │  │Ship CommitQuest v0.2                       ││
+││  Campaigns              │  │Create one tagged release                   ││
+││  Achievements           │  │░░░░░░░░░░░░░░░░░░  0/1                    ││
+││  Progress               │  │Reward: +250 XP                             ││
+││  Adventure Log          │  ╰────────────────────────────────────────────╯│
+│╰─────────────────────────╯                                                │
+├───────────────────────────────────────────────────────────────────────────┤
+│↑↓ Move  ←→ Screens  Enter Open  R Refresh     Made with <3 by Aetherelic│
+╰───────────────────────────────────────────────────────────────────────────╯
 ```
+
+Use arrow keys or `H/J/K/L`, `Enter`, `Esc`, `Tab`, `R`, `?`, and `Q`. The UI automatically scans campaigns when it opens, redraws safely when the terminal is resized, and falls back to the classic text dashboard in non-interactive shells.
 
 CommitQuest is deliberately **not** a developer ranking system. Commit counts and streaks are game mechanics, not measurements of skill or worth.
 
@@ -68,6 +63,8 @@ CommitQuest is deliberately **not** a developer ranking system. Commit counts an
 - Track commit types, releases, manual milestones, XP rewards, and optional deadlines
 - Explain when a generic commit did not match an active typed quest
 - Preview commit classification and quest progress before committing
+- Open a full-screen interactive game with quest, campaign, badge, progress, and adventure-log menus
+- Navigate entirely by keyboard with safe resize, signal, and non-TTY handling
 
 ## Requirements
 
@@ -102,10 +99,11 @@ nix develop
 ```bash
 cq init
 cq add ~/Projects/your-project
-cq scan
-cq status
 cq hook install ~/Projects/your-project
+cq
 ```
+
+For normal use, `cq` is now the main command. It scans tracked campaigns and opens the interactive game. `cq play` and `cq ui` are explicit aliases.
 
 CommitQuest reads your global Git name and email during `cq init`. You can set them explicitly:
 
@@ -176,6 +174,8 @@ cq hook remove ~/Projects/your-project
 
 | Command | Purpose |
 |---|---|
+| `cq` | Scan campaigns and open the interactive game |
+| `cq play` / `cq ui` | Explicitly open the interactive game |
 | `cq init` | Create or update your local player profile |
 | `cq add <path>` | Add a Git repository as a campaign |
 | `cq scan` | Import new commits, releases, quests, and achievements |
@@ -239,7 +239,8 @@ src/
 ├── core/           XP, levels, streaks, quests, achievements
 ├── data/           SQLite schema and persistence
 ├── git/            Git process integration and history parsing
-├── ui/             Terminal presentation
+├── ui/             Classic command output
+├── tui/            Full-screen game model, navigation, and rendering
 └── cli.ts          Commander entry point
 ```
 
@@ -249,7 +250,7 @@ src/
 - GitHub issue and milestone integration
 - Language and project-class progression paths
 - Signed local activity snapshots
-- A polished local web dashboard and world map
+- A local graphical world map built on the same dashboard model
 - Optional cross-device encrypted sync
 - Plugin API for editors and terminal dashboards
 
