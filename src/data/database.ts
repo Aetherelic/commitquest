@@ -105,11 +105,39 @@ function migrateQuestEligibility(db: CommitQuestDatabase): void {
   }
 }
 
+function reconcileQuestEligibilityPrecision(db: CommitQuestDatabase): void {
+  const migrationKey = "quest-eligibility-second-precision-v1";
+  const applied = db.prepare("SELECT 1 AS found FROM meta WHERE key = ?").get(migrationKey);
+  if (applied) return;
+
+  db.exec(`
+    UPDATE commits
+    SET quest_eligible = CASE
+      WHEN CAST(strftime('%s', authored_at) AS INTEGER) >= CAST(strftime('%s', (
+        SELECT added_at FROM repositories WHERE repositories.id = commits.repository_id
+      )) AS INTEGER) THEN 1
+      ELSE 0
+    END;
+
+    UPDATE tags
+    SET quest_eligible = CASE
+      WHEN CAST(strftime('%s', tagged_at) AS INTEGER) >= CAST(strftime('%s', (
+        SELECT added_at FROM repositories WHERE repositories.id = tags.repository_id
+      )) AS INTEGER) THEN 1
+      ELSE 0
+    END;
+  `);
+
+  db.prepare("INSERT INTO meta(key, value) VALUES (?, ?)")
+    .run(migrationKey, new Date().toISOString());
+}
+
 export function openDatabase(): CommitQuestDatabase {
   fs.mkdirSync(getDataDirectory(), { recursive: true });
   const db = new DatabaseSync(getDatabasePath());
   db.exec(SCHEMA);
   migrateQuestEligibility(db);
+  reconcileQuestEligibilityPrecision(db);
   return db;
 }
 

@@ -92,6 +92,37 @@ describe("quest eligibility", () => {
     db.close();
   });
 
+  it("repairs same-second activity imported as historical by the millisecond comparison", () => {
+    const dataDirectory = createDataDirectory();
+    let db = openDatabase();
+    const repository = addRepository(db, {
+      name: "fixture",
+      path: "/tmp/fixture",
+      defaultBranch: "main"
+    });
+
+    db.prepare("UPDATE repositories SET added_at = ? WHERE id = ?")
+      .run("2026-07-15T12:00:00.900Z", repository.id);
+    insertCommit(
+      db,
+      repository.id,
+      commit("same-second", "2026-07-15T12:00:00.000Z", "fix"),
+      30,
+      false
+    );
+    db.prepare("DELETE FROM meta WHERE key = ?")
+      .run("quest-eligibility-second-precision-v1");
+    db.close();
+
+    db = openDatabase();
+    const row = db.prepare(
+      "SELECT quest_eligible AS questEligible FROM commits WHERE hash = 'same-second'"
+    ).get() as { questEligible: number };
+
+    expect(row.questEligible).toBe(1);
+    db.close();
+  });
+
   it("migrates an existing database and marks pre-campaign activity as historical", () => {
     const dataDirectory = createDataDirectory();
     const databasePath = path.join(dataDirectory, "commitquest.db");

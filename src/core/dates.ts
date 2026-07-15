@@ -38,3 +38,15 @@ export function formatRelativeDate(value: string): string {
   if (diffDays < 7) return `${diffDays} days ago`;
   return date.toLocaleDateString();
 }
+export function isQuestEligible(activityAt: string, campaignAddedAt: string): boolean {
+  const activityTime = new Date(activityAt).getTime();
+  const campaignTime = new Date(campaignAddedAt).getTime();
+
+  if (!Number.isFinite(activityTime) || !Number.isFinite(campaignTime)) return false;
+
+  // Git timestamps are only precise to whole seconds, while campaign timestamps
+  // include milliseconds. Compare at Git's precision so a commit made in the
+  // same second as `cq add` is not incorrectly treated as historical.
+  return Math.floor(activityTime / 1000) >= Math.floor(campaignTime / 1000);
+}
+

@@ -6,6 +6,7 @@ import {
   markRepositoryScanned
 } from "../data/database.js";
 import { calculateAwardedXp } from "./xp.js";
+import { isQuestEligible } from "./dates.js";
 import type { GitCommit, RepositoryRecord } from "./types.js";
 import { readCommits, readTags } from "../git/git.js";
 
@@ -63,7 +64,7 @@ export function scanRepositories(
     const bounds = dayBounds(item.commit.authoredAt);
     const stats = getDailyCommitRewardStats(db, bounds.start, bounds.end);
     const awardedXp = calculateAwardedXp(item.commit.baseXp, stats.count, stats.xp);
-    const questEligible = new Date(item.commit.authoredAt).getTime() >= new Date(item.repository.addedAt).getTime();
+    const questEligible = isQuestEligible(item.commit.authoredAt, item.repository.addedAt);
     insertCommit(db, item.repository.id, item.commit, awardedXp, questEligible);
     if (!questEligible) historicalCommits += 1;
     earnedXp += awardedXp;
@@ -77,7 +78,7 @@ export function scanRepositories(
 
   for (const repository of repositories) {
     for (const tag of readTags(repository.path)) {
-      const questEligible = new Date(tag.taggedAt).getTime() >= new Date(repository.addedAt).getTime();
+      const questEligible = isQuestEligible(tag.taggedAt, repository.addedAt);
       const result = insertTag.run(
         repository.id,
         tag.name,
