@@ -1,0 +1,48 @@
+{
+  "name": "commitquest",
+  "version": "0.1.0",
+  "description": "Turn real Git progress into a private developer adventure.",
+  "type": "module",
+  "bin": {
+    "commitquest": "dist/cli.js",
+    "cq": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node --disable-warning=ExperimentalWarning dist/cli.js",
+    "test": "NODE_NO_WARNINGS=1 vitest run",
+    "test:watch": "NODE_NO_WARNINGS=1 vitest",
+    "check": "npm run build && npm test",
+    "prepublishOnly": "npm run check"
+  },
+  "keywords": [
+    "git",
+    "gamification",
+    "developer-tools",
+    "cli",
+    "productivity",
+    "local-first"
+  ],
+  "author": "Aetherelic",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "cli-table3": "^0.6.5",
+    "commander": "^15.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
