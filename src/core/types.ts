@@ -46,6 +46,41 @@ export interface Quest {
   periodLabel: string;
 }
 
+
+export type CustomQuestObjective =
+  | "commit"
+  | "feat"
+  | "fix"
+  | "docs"
+  | "test"
+  | "refactor"
+  | "release"
+  | "manual";
+
+export type CustomQuestStatus = "active" | "complete" | "abandoned" | "expired";
+
+export interface CustomQuestRecord {
+  id: number;
+  title: string;
+  repositoryId: number | null;
+  repositoryName: string | null;
+  objectiveType: CustomQuestObjective;
+  target: number;
+  rewardXp: number;
+  baselineCount: number;
+  createdAt: string;
+  deadlineAt: string | null;
+  completedAt: string | null;
+  abandonedAt: string | null;
+}
+
+export interface CustomQuestState extends CustomQuestRecord {
+  progress: number;
+  complete: boolean;
+  status: CustomQuestStatus;
+  description: string;
+}
+
 export interface AchievementDefinition {
   key: string;
   title: string;

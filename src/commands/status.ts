@@ -5,12 +5,14 @@ import { calculateLevel } from "../core/levels.js";
 import { calculateStreak } from "../core/streak.js";
 import { syncQuestRewards, isQuestRewarded } from "../core/quests.js";
 import { syncAchievements } from "../core/achievements.js";
+import { syncCustomQuestRewards } from "../core/custom-quests.js";
 import { renderBanner } from "../ui/banner.js";
-import { renderLevel, renderQuests, section } from "../ui/render.js";
+import { renderCustomQuests, renderLevel, renderQuests, section } from "../ui/render.js";
 
 export function statusCommand(): void {
   const db = openDatabase();
   syncQuestRewards(db);
+  const customQuests = syncCustomQuestRewards(db);
   syncAchievements(db);
 
   const profile = getProfile(db);
@@ -31,5 +33,9 @@ export function statusCommand(): void {
     `${chalk.bold(stats.achievements)} achievement${stats.achievements === 1 ? "" : "s"} · ${chalk.bold(stats.questRewards)} quest${stats.questRewards === 1 ? "" : "s"} completed`
   ].join("\n"))}`);
   console.log(`\n${section("Active Quests", renderQuests(quests, rewardedKeys))}`);
+  const activeCustomQuests = customQuests.filter((quest) => quest.status === "active");
+  if (activeCustomQuests.length > 0) {
+    console.log(`\n${section("Custom Quests", renderCustomQuests(activeCustomQuests))}`);
+  }
   db.close();
 }

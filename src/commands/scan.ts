@@ -4,6 +4,7 @@ import { getProfile } from "../core/profile.js";
 import { scanRepositories } from "../core/scan.js";
 import { syncQuestRewards } from "../core/quests.js";
 import { syncAchievements } from "../core/achievements.js";
+import { syncCustomQuestRewards } from "../core/custom-quests.js";
 import { success, warning } from "../ui/render.js";
 
 export interface ScanOptions {
@@ -41,16 +42,22 @@ export function scanCommand(options: ScanOptions): void {
     (db.prepare("SELECT quest_key AS questKey FROM quest_rewards").all() as Array<{ questKey: string }>).map((row) => row.questKey)
   );
   const quests = syncQuestRewards(db);
+  const customQuests = syncCustomQuestRewards(db);
   const newlyCompletedQuests = quests.filter((quest) => quest.complete && !questsBefore.has(quest.key));
+  const newlyCompletedCustomQuests = customQuests.filter(
+    (quest) => quest.complete && !questsBefore.has(`custom-${quest.id}`)
+  );
   const unlockedAchievements = syncAchievements(db);
 
   if (options.hook) {
     const bonusXp = newlyCompletedQuests.reduce((total, quest) => total + quest.rewardXp, 0)
+      + newlyCompletedCustomQuests.reduce((total, quest) => total + quest.rewardXp, 0)
       + unlockedAchievements.reduce((total, achievement) => total + achievement.rewardXp, 0);
     const totalReward = summary.earnedXp + bonusXp;
     const hasUpdate = summary.importedCommits > 0
       || summary.importedTags > 0
       || newlyCompletedQuests.length > 0
+      || newlyCompletedCustomQuests.length > 0
       || unlockedAchievements.length > 0;
 
     if (!hasUpdate) {
@@ -64,6 +71,10 @@ export function scanCommand(options: ScanOptions): void {
 
     for (const quest of newlyCompletedQuests) {
       console.log(`${chalk.green("  ◆ QUEST COMPLETE")} ${chalk.bold(quest.title)} ${chalk.magenta(`+${quest.rewardXp} XP`)}`);
+    }
+
+    for (const quest of newlyCompletedCustomQuests) {
+      console.log(`${chalk.green("  ◆ CUSTOM QUEST COMPLETE")} ${chalk.bold(quest.title)} ${chalk.magenta(`+${quest.rewardXp} XP`)}`);
     }
 
     for (const achievement of unlockedAchievements) {
@@ -94,6 +105,10 @@ export function scanCommand(options: ScanOptions): void {
 
   for (const quest of newlyCompletedQuests) {
     console.log(`\n${chalk.green("◆ QUEST COMPLETE")} ${chalk.bold(quest.title)} ${chalk.magenta(`+${quest.rewardXp} XP`)}`);
+  }
+
+  for (const quest of newlyCompletedCustomQuests) {
+    console.log(`\n${chalk.green("◆ CUSTOM QUEST COMPLETE")} ${chalk.bold(`#${quest.id} ${quest.title}`)} ${chalk.magenta(`+${quest.rewardXp} XP`)}`);
   }
 
   for (const achievement of unlockedAchievements) {

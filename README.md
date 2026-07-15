@@ -64,6 +64,8 @@ CommitQuest is deliberately **not** a developer ranking system. Commit counts an
 - Calculate current and longest streaks
 - Keep every byte of activity data on your own machine
 - Enable live XP rewards immediately after each Git commit
+- Create campaign-specific or global custom quests with automatic Git objectives
+- Track commit types, releases, manual milestones, XP rewards, and optional deadlines
 
 ## Requirements
 
@@ -117,6 +119,34 @@ cq scan --all-authors
 
 Commits and releases created before a campaign was added still earn their normal historical XP and can unlock long-term achievements. They do not advance the current daily, weekly, or monthly quest board; only activity created after `cq add` counts toward active quests.
 
+### Custom campaign quests
+
+Create objectives that begin from the moment the quest is accepted. Existing imported activity establishes the baseline and cannot instantly complete a new custom quest.
+
+```bash
+cq quest add "Ship CommitQuest v0.2" \
+  --repo commitquest \
+  --type release \
+  --target 1 \
+  --xp 250
+
+cq quest add "Strengthen the test suite" \
+  --repo commitquest \
+  --type test \
+  --target 5 \
+  --xp 150 \
+  --deadline 2026-08-01
+```
+
+Supported automatic objectives are `commit`, `feat`, `fix`, `docs`, `test`, `refactor`, and `release`. Manual milestones are completed explicitly:
+
+```bash
+cq quest add "Design the dashboard" --type manual --xp 100
+cq quest complete 3
+```
+
+Manage the quest board with `cq quest list`, `cq quest show <id>`, and `cq quest abandon <id>`. Automatic quests progress during normal `cq scan` runs and post-commit hook scans.
+
 ### Live rewards
 
 Enable the optional post-commit hook for a tracked campaign:
@@ -141,6 +171,11 @@ cq hook remove ~/Projects/your-project
 | `cq status` | Show the main player dashboard |
 | `cq log` | Show recently rewarded commits |
 | `cq quests` | Open the current quest board |
+| `cq quest add <title>` | Create a custom campaign or global quest |
+| `cq quest list` | List active and completed custom quests |
+| `cq quest show <id>` | Inspect one custom quest |
+| `cq quest complete <id>` | Complete a manual milestone |
+| `cq quest abandon <id>` | Abandon an active custom quest |
 | `cq achievements` | View locked and unlocked achievements |
 | `cq repos` | List tracked campaigns |
 | `cq profile` | View or change the rewarded Git identity |
@@ -198,7 +233,7 @@ src/
 
 ## Roadmap
 
-- Custom story campaigns and user-created quests
+- Narrative chapters and linked quest chains
 - GitHub issue and milestone integration
 - Language and project-class progression paths
 - Signed local activity snapshots

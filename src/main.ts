@@ -13,6 +13,14 @@ import { achievementsCommand } from "./commands/achievements.js";
 import { profileCommand } from "./commands/profile.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { hookStatusCommand, installHookCommand, removeHookCommand } from "./commands/hook.js";
+import {
+  abandonCustomQuestCommand,
+  addCustomQuestCommand,
+  completeCustomQuestCommand,
+  CUSTOM_QUEST_OBJECTIVES,
+  listCustomQuestCommand,
+  showCustomQuestCommand
+} from "./commands/custom-quests.js";
 
 const program = new Command();
 
@@ -66,6 +74,48 @@ program
   .command("quests")
   .description("Show the current quest board")
   .action(questsCommand);
+
+const customQuest = program
+  .command("quest")
+  .description("Create and manage custom campaign quests");
+
+const addCustomQuest = customQuest
+  .command("add <title>")
+  .description("Create a custom quest")
+  .option("--repo <name-or-path>", "limit progress to one campaign")
+  .option("--target <number>", "activity required to complete the quest", "1")
+  .option("--xp <number>", "XP awarded on completion", "100")
+  .option("--deadline <YYYY-MM-DD>", "optional completion deadline");
+addCustomQuest.addOption(
+  new Option("--type <type>", "quest objective")
+    .choices(CUSTOM_QUEST_OBJECTIVES)
+    .default("manual")
+);
+addCustomQuest.action(addCustomQuestCommand);
+
+customQuest
+  .command("list")
+  .description("List custom quests")
+  .option("--all", "include abandoned and expired quests")
+  .option("--repo <name-or-path>", "filter by campaign")
+  .action(listCustomQuestCommand);
+
+customQuest
+  .command("show <id>")
+  .description("Show one custom quest")
+  .action(showCustomQuestCommand);
+
+customQuest
+  .command("complete <id>")
+  .description("Complete a manual custom quest")
+  .action(completeCustomQuestCommand);
+
+customQuest
+  .command("abandon <id>")
+  .description("Abandon an active custom quest")
+  .action(abandonCustomQuestCommand);
+
+customQuest.action(() => listCustomQuestCommand());
 
 program
   .command("achievements")

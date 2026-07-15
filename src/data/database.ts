@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { getDataDirectory, getDatabasePath } from "./paths.js";
-import type { GitCommit, RepositoryRecord } from "../core/types.js";
+import type { CustomQuestObjective, CustomQuestRecord, GitCommit, RepositoryRecord } from "../core/types.js";
 
 export type CommitQuestDatabase = DatabaseSync;
 
@@ -70,6 +70,23 @@ CREATE TABLE IF NOT EXISTS achievements (
   reward_xp INTEGER NOT NULL,
   unlocked_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS custom_quests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  repository_id INTEGER REFERENCES repositories(id) ON DELETE SET NULL,
+  objective_type TEXT NOT NULL,
+  target INTEGER NOT NULL,
+  reward_xp INTEGER NOT NULL,
+  baseline_count INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  deadline_at TEXT,
+  completed_at TEXT,
+  abandoned_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS custom_quests_status_idx
+  ON custom_quests(completed_at, abandoned_at, deadline_at);
 `;
 
 function hasColumn(db: CommitQuestDatabase, table: "commits" | "tags", column: string): boolean {
@@ -284,4 +301,145 @@ export function databaseStats(db: CommitQuestDatabase): {
     questRewards: number;
     achievements: number;
   };
+}
+
+
+export function countQuestActivity(
+  db: CommitQuestDatabase,
+  objectiveType: CustomQuestObjective,
+  repositoryId: number | null,
+  beforeIso: string | null = null
+): number {
+  if (objectiveType === "manual") return 0;
+
+  const conditions = ["quest_eligible = 1"];
+  const params: Array<string | number> = [];
+
+  if (repositoryId !== null) {
+    conditions.push("repository_id = ?");
+    params.push(repositoryId);
+  }
+
+  if (objectiveType === "release") {
+    if (beforeIso !== null) {
+      conditions.push("tagged_at <= ?");
+      params.push(beforeIso);
+    }
+    const row = db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM tags
+      WHERE ${conditions.join(" AND ")}
+    `).get(...params) as { count: number };
+    return row.count;
+  }
+
+  if (objectiveType !== "commit") {
+    conditions.push("type = ?");
+    params.push(objectiveType);
+  }
+  if (beforeIso !== null) {
+    conditions.push("authored_at <= ?");
+    params.push(beforeIso);
+  }
+
+  const row = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM commits
+    WHERE ${conditions.join(" AND ")}
+  `).get(...params) as { count: number };
+  return row.count;
+}
+
+function mapCustomQuest(row: Record<string, unknown>): CustomQuestRecord {
+  return {
+    id: Number(row.id),
+    title: String(row.title),
+    repositoryId: row.repositoryId === null ? null : Number(row.repositoryId),
+    repositoryName: row.repositoryName === null ? null : String(row.repositoryName),
+    objectiveType: String(row.objectiveType) as CustomQuestObjective,
+    target: Number(row.target),
+    rewardXp: Number(row.rewardXp),
+    baselineCount: Number(row.baselineCount),
+    createdAt: String(row.createdAt),
+    deadlineAt: row.deadlineAt === null ? null : String(row.deadlineAt),
+    completedAt: row.completedAt === null ? null : String(row.completedAt),
+    abandonedAt: row.abandonedAt === null ? null : String(row.abandonedAt)
+  };
+}
+
+const CUSTOM_QUEST_SELECT = `
+  SELECT
+    q.id,
+    q.title,
+    q.repository_id AS repositoryId,
+    r.name AS repositoryName,
+    q.objective_type AS objectiveType,
+    q.target,
+    q.reward_xp AS rewardXp,
+    q.baseline_count AS baselineCount,
+    q.created_at AS createdAt,
+    q.deadline_at AS deadlineAt,
+    q.completed_at AS completedAt,
+    q.abandoned_at AS abandonedAt
+  FROM custom_quests q
+  LEFT JOIN repositories r ON r.id = q.repository_id
+`;
+
+export function createCustomQuest(
+  db: CommitQuestDatabase,
+  input: {
+    title: string;
+    repositoryId: number | null;
+    objectiveType: CustomQuestObjective;
+    target: number;
+    rewardXp: number;
+    deadlineAt: string | null;
+  }
+): CustomQuestRecord {
+  const baselineCount = countQuestActivity(db, input.objectiveType, input.repositoryId);
+  const result = db.prepare(`
+    INSERT INTO custom_quests(
+      title, repository_id, objective_type, target, reward_xp,
+      baseline_count, created_at, deadline_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.title,
+    input.repositoryId,
+    input.objectiveType,
+    input.target,
+    input.rewardXp,
+    baselineCount,
+    new Date().toISOString(),
+    input.deadlineAt
+  );
+
+  return getCustomQuest(db, Number(result.lastInsertRowid))!;
+}
+
+export function getCustomQuest(db: CommitQuestDatabase, id: number): CustomQuestRecord | null {
+  const row = db.prepare(`${CUSTOM_QUEST_SELECT} WHERE q.id = ?`).get(id) as Record<string, unknown> | undefined;
+  return row ? mapCustomQuest(row) : null;
+}
+
+export function listCustomQuests(db: CommitQuestDatabase): CustomQuestRecord[] {
+  const rows = db.prepare(`${CUSTOM_QUEST_SELECT} ORDER BY q.created_at DESC, q.id DESC`).all() as Array<Record<string, unknown>>;
+  return rows.map(mapCustomQuest);
+}
+
+export function markCustomQuestCompleted(db: CommitQuestDatabase, id: number, completedAt: string): boolean {
+  const result = db.prepare(`
+    UPDATE custom_quests
+    SET completed_at = ?
+    WHERE id = ? AND completed_at IS NULL AND abandoned_at IS NULL
+  `).run(completedAt, id);
+  return result.changes > 0;
+}
+
+export function abandonCustomQuest(db: CommitQuestDatabase, id: number, abandonedAt: string): boolean {
+  const result = db.prepare(`
+    UPDATE custom_quests
+    SET abandoned_at = ?
+    WHERE id = ? AND completed_at IS NULL AND abandoned_at IS NULL
+  `).run(abandonedAt, id);
+  return result.changes > 0;
 }

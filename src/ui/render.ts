@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import Table from "cli-table3";
-import type { AchievementState, Quest, RepositoryRecord } from "../core/types.js";
+import type { AchievementState, CustomQuestState, Quest, RepositoryRecord } from "../core/types.js";
 import type { LevelProgress } from "../core/levels.js";
 import { formatRelativeDate } from "../core/dates.js";
 
@@ -33,6 +33,41 @@ export function renderQuests(quests: Quest[], rewardedKeys = new Set<string>()):
 
     return [
       `${icon} ${chalk.bold(quest.title)} ${chalk.dim(`· ${quest.periodLabel}`)} ${chalk.magenta(`+${quest.rewardXp} XP`)}`,
+      `  ${questProgressBar(quest.progress, quest.target)}  ${state}`,
+      `  ${chalk.dim(quest.description)}`
+    ].join("\n");
+  }).join("\n\n");
+}
+
+export function renderCustomQuests(quests: CustomQuestState[]): string {
+  return quests.map((quest) => {
+    const icon = quest.status === "complete"
+      ? chalk.green("◆")
+      : quest.status === "abandoned" || quest.status === "expired"
+        ? chalk.dim("◇")
+        : chalk.magenta("◇");
+    const state = quest.status === "complete"
+      ? chalk.green("claimed")
+      : quest.status === "abandoned"
+        ? chalk.dim("abandoned")
+        : quest.status === "expired"
+          ? chalk.yellow("expired")
+          : `${quest.progress}/${quest.target}`;
+    const scope = quest.repositoryName ?? "All campaigns";
+    const objective = quest.objectiveType === "manual"
+      ? "Manual milestone"
+      : quest.objectiveType === "release"
+        ? "Release"
+        : quest.objectiveType === "commit"
+          ? "Any commit"
+          : `${quest.objectiveType} commit`;
+    const deadline = quest.deadlineAt
+      ? ` · due ${new Date(quest.deadlineAt).toLocaleDateString()}`
+      : "";
+
+    return [
+      `${icon} ${chalk.bold(`#${quest.id} ${quest.title}`)} ${chalk.magenta(`+${quest.rewardXp} XP`)}`,
+      `  ${chalk.dim(`${scope} · ${objective}${deadline}`)}`,
       `  ${questProgressBar(quest.progress, quest.target)}  ${state}`,
       `  ${chalk.dim(quest.description)}`
     ].join("\n");
