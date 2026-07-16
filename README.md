@@ -26,7 +26,7 @@ Running `cq` opens the full interactive game with a focused, OpenCode-inspired l
               █     █   █ █   █ █   █   █     █   █  ██ █   █ █         █   █
               █████ █████ █   █ █   █ █████   █   █████ █████ █████ █████   █
 
-                         COMMITQUEST v0.1.2 · level up by shipping real work
+                         COMMITQUEST v0.2.0 · level up by shipping real work
 
                     > /quests       active objectives and rewards       enter
                       /campaigns    tracked repositories                enter
@@ -38,7 +38,7 @@ Running `cq` opens the full interactive game with a focused, OpenCode-inspired l
 ↑↓ Move  ←→ Screens  Enter Open  R Refresh  T Themes       Made with <3 by Aetherelic
 ```
 
-Use arrow keys or `H/J/K/L`, `Enter`, `Esc`, `Tab`, `R`, `T`, `?`, and `Q`. The **Themes** screen offers live previews of Tokyo Night, Arcane, Catppuccin, Everforest, and Monochrome. Pressing `Enter` saves the selection to `~/.config/commitquest/settings.json`, so it returns on the next launch.
+Use arrow keys or `H/J/K/L`, `Enter`, `Esc`, `Tab`, `R`, `T`, `?`, `/`, and `Q`. The `/` key opens a searchable command palette from every screen. The **Themes** screen offers live previews of Tokyo Night, Arcane, Catppuccin, Everforest, and Monochrome. Pressing `Enter` saves the selection to `~/.config/commitquest/settings.json`, so it returns on the next launch.
 
 The UI automatically scans campaigns when it opens, redraws safely when the terminal is resized, and falls back to the classic text dashboard in non-interactive shells.
 
@@ -70,6 +70,30 @@ CommitQuest is deliberately **not** a developer ranking system. Commit counts an
 - Use full-height three-column quest, campaign, and badge boards on wide terminals
 - Preview and persist five built-in colour themes
 - Navigate entirely by keyboard with safe resize, signal, and non-TTY handling
+- Create and edit custom quests through guided forms inside the TUI
+- Complete manual quests and abandon active quests with confirmation dialogs
+- Add, scan, repair, archive, restore, and remove campaigns without leaving CommitQuest
+- Require typed campaign-name verification before destructive removal
+- Open searchable actions with the `/` command palette
+- Expand quests, campaigns, badges, and log entries into full detail views
+- Guide new users through profile, campaign, live-reward, and theme onboarding
+- Pause automatic and post-commit scans for archived campaigns
+
+
+## Interactive controls
+
+The TUI is now the primary way to manage CommitQuest:
+
+| Context | Keys |
+|---|---|
+| Anywhere | `/` command palette · `R` refresh · `T` themes · `?` help · `Q` quit |
+| Quest Board | `N` create · `E` edit · `C` complete manual · `A` abandon · `Enter` detail |
+| Campaigns | `N` add · `S` scan · `P` repair path · `X` archive/restore · `D` remove · `Enter` detail |
+| Forms | `Tab`/`↑↓` fields · `←→` choices · `Enter` next/submit · `Esc` cancel |
+
+Campaign removal deletes CommitQuest's stored tracking data only. The Git repository and its files are never deleted. Removal requires typing the campaign name exactly. Archiving is the safer default: it preserves all data while pausing automatic scans.
+
+First-time users receive an interactive setup flow for their display name, Git email, first campaign, live post-commit rewards, and saved colour theme.
 
 ## Requirements
 
