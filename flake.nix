@@ -13,7 +13,7 @@
         in
           pkgs.buildNpmPackage {
             pname = "commitquest";
-            version = "0.5.0";
+            version = "1.0.0";
             src = self;
 
             nodejs = pkgs.nodejs_24;
@@ -31,10 +31,26 @@
             '';
 
             postInstall = ''
-              wrapProgram "$out/bin/cq" \
+              cli="$out/lib/node_modules/commitquest/dist/cli.js"
+              test -f "$cli"
+
+              rm -f "$out/bin/cq" "$out/bin/commitquest"
+              makeWrapper ${pkgs.nodejs_24}/bin/node "$out/bin/cq" \
+                --add-flags "$cli" \
                 --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.git ]}
-              wrapProgram "$out/bin/commitquest" \
-                --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.git ]}
+              ln -s cq "$out/bin/commitquest"
+
+              mkdir -p \
+                "$out/share/bash-completion/completions" \
+                "$out/share/zsh/site-functions" \
+                "$out/share/fish/vendor_completions.d" \
+                "$out/share/man/man1"
+
+              "$out/bin/cq" completion bash > "$out/share/bash-completion/completions/cq"
+              "$out/bin/cq" completion zsh > "$out/share/zsh/site-functions/_cq"
+              "$out/bin/cq" completion fish > "$out/share/fish/vendor_completions.d/cq.fish"
+              cp docs/commitquest.1 "$out/share/man/man1/commitquest.1"
+              ln -s commitquest.1 "$out/share/man/man1/cq.1"
             '';
 
             meta = {

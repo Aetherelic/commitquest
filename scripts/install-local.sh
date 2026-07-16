@@ -35,6 +35,17 @@ WRAPPER
 chmod +x "$prefix/bin/cq"
 ln -s cq "$prefix/bin/commitquest"
 
+mkdir -p \
+  "$prefix/share/bash-completion/completions" \
+  "$prefix/share/zsh/site-functions" \
+  "$prefix/share/fish/vendor_completions.d" \
+  "$prefix/share/man/man1"
+"$prefix/bin/cq" completion bash > "$prefix/share/bash-completion/completions/cq"
+"$prefix/bin/cq" completion zsh > "$prefix/share/zsh/site-functions/_cq"
+"$prefix/bin/cq" completion fish > "$prefix/share/fish/vendor_completions.d/cq.fish"
+cp docs/commitquest.1 "$prefix/share/man/man1/commitquest.1"
+ln -sfn commitquest.1 "$prefix/share/man/man1/cq.1"
+
 installed_version="$("$prefix/bin/cq" --version)"
 expected_version="$(node -p "require('./package.json').version")"
 if [[ "$installed_version" != "$expected_version" ]]; then

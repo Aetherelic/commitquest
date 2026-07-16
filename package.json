@@ -1,6 +1,6 @@
 {
   "name": "commitquest",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "description": "Turn real Git progress into a private developer adventure.",
   "type": "module",
   "bin": {
@@ -12,7 +12,8 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "docs"
+    "docs",
+    "scripts/uninstall-local.sh"
   ],
   "scripts": {
     "dev": "tsx src/cli.ts",
@@ -22,7 +23,8 @@
     "test:watch": "NODE_NO_WARNINGS=1 vitest",
     "check": "npm run build && npm test",
     "prepublishOnly": "npm run check",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "verify:release": "node scripts/verify-release.mjs"
   },
   "keywords": [
     "git",
