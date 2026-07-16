@@ -55,6 +55,8 @@ export type TuiKey =
   | "repair"
   | "archive"
   | "remove"
+  | "motion"
+  | "color"
   | "quit"
   | "unknown";
 
@@ -76,6 +78,8 @@ export type TuiEffect =
   | "campaign-remove"
   | "class-choose"
   | "share-export"
+  | "toggle-motion"
+  | "cycle-color"
   | "quit";
 
 export interface TuiTransition {
@@ -190,6 +194,8 @@ export function transitionTui(state: TuiState, key: TuiKey, model: TuiModel): Tu
     return { state: { ...state, screen: HOME_MENU[state.homeIndex]?.screen ?? "quests" }, effect: "none" };
   }
   if (key === "enter" && state.screen === "themes") return { state, effect: "apply-theme" };
+  if (key === "motion" && state.screen === "themes") return { state, effect: "toggle-motion" };
+  if (key === "color" && state.screen === "themes") return { state, effect: "cycle-color" };
   if (key === "enter" && state.screen === "path") return { state, effect: "class-choose" };
   if (key === "enter" && state.screen === "share") return { state, effect: "share-export" };
   if (key === "enter" && state.screen !== "progress") return { state, effect: "open-detail" };

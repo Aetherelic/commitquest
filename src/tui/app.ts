@@ -18,7 +18,7 @@ import {
   type TuiEffect,
   type TuiKey
 } from "./navigation.js";
-import { loadTuiPreferences, saveTuiPreferences } from "./preferences.js";
+import { loadTuiPreferences, saveTuiPreferences, shouldUseColor } from "./preferences.js";
 import { renderTui } from "./render.js";
 import { getTuiTheme, TUI_THEMES, type TuiTheme } from "./theme.js";
 import { writeCrashReport } from "../core/crash.js";
@@ -68,6 +68,8 @@ export function keyFromPress(sequence: string | undefined, key: Key | undefined)
   if (sequence === "/") return "palette";
   if (sequence === "r" || sequence === "R") return "refresh";
   if (sequence === "t" || sequence === "T") return "themes";
+  if (sequence === "m" || sequence === "M") return "motion";
+  if (sequence === "v" || sequence === "V") return "color";
   if (sequence === "n" || sequence === "N") return "new";
   if (sequence === "e" || sequence === "E") return "edit";
   if (sequence === "c" || sequence === "C") return "complete";
@@ -160,9 +162,11 @@ export async function launchTui(streams: TuiStreams = {}): Promise<void> {
 
   const draw = (): void => {
     output.write(`${CLEAR_SCREEN}${renderTui(model, state, terminalSize(output), {
-      color: process.env.NO_COLOR === undefined,
+      color: shouldUseColor(preferences),
       theme,
-      pulse
+      pulse,
+      motion: preferences.motion,
+      colorMode: preferences.color
     })}`);
   };
 
@@ -178,7 +182,8 @@ export async function launchTui(streams: TuiStreams = {}): Promise<void> {
 
   const applyTheme = (nextTheme = selectedTheme(state, theme)): void => {
     try {
-      saveTuiPreferences({ theme: nextTheme.id });
+      preferences.theme = nextTheme.id;
+      saveTuiPreferences(preferences);
       theme = nextTheme;
       model = { ...model, notice: `Theme saved · ${nextTheme.name}` };
     } catch (error) {
@@ -349,6 +354,7 @@ export async function launchTui(streams: TuiStreams = {}): Promise<void> {
 
   await new Promise<void>((resolve) => {
     const animation = setInterval(() => {
+      if (preferences.motion === "reduced") return;
       if (finished || state.screen !== "home" || state.helpOpen || state.modalOpen || state.overlay) return;
       pulse = !pulse;
       draw();
@@ -403,6 +409,18 @@ export async function launchTui(streams: TuiStreams = {}): Promise<void> {
       if (effect === "campaign-remove") executeAction("campaign-remove");
       if (effect === "class-choose") executeAction("class-choose");
       if (effect === "share-export") executeAction("share-export");
+      if (effect === "toggle-motion") {
+        preferences.motion = preferences.motion === "full" ? "reduced" : "full";
+        saveTuiPreferences(preferences);
+        model = { ...model, notice: `Motion set to ${preferences.motion}` };
+      }
+      if (effect === "cycle-color") {
+        const modes = ["auto", "always", "never"] as const;
+        const current = Math.max(0, modes.indexOf(preferences.color));
+        preferences.color = modes[(current + 1) % modes.length] ?? "auto";
+        saveTuiPreferences(preferences);
+        model = { ...model, notice: `Colour set to ${preferences.color}` };
+      }
     };
 
     const onKeypress = (sequence: string, key: Key): void => {

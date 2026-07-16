@@ -26,6 +26,8 @@ interface RenderOptions {
   color?: boolean;
   theme?: TuiTheme;
   pulse?: boolean;
+  motion?: "full" | "reduced";
+  colorMode?: "auto" | "always" | "never";
 }
 
 type Tone = "normal" | "accent" | "accentAlt" | "muted" | "success" | "warning" | "danger" | "selected" | "title";
@@ -984,12 +986,20 @@ function themePreviewPanel(theme: TuiTheme, width: number): string[] {
   ], width);
 }
 
-function themesBody(state: TuiState, width: number, height: number, activeTheme: TuiTheme): Line[] {
+function themesBody(
+  state: TuiState,
+  width: number,
+  height: number,
+  activeTheme: TuiTheme,
+  motion: "full" | "reduced",
+  colorMode: "auto" | "always" | "never"
+): Line[] {
   const previewTheme = TUI_THEMES[state.selected.themes] ?? activeTheme;
   const summary = summaryCards([
     { title: "Current", value: activeTheme.name, subtitle: "saved theme" },
     { title: "Preview", value: previewTheme.name, subtitle: previewTheme.id === activeTheme.id ? "already active" : "press Enter to save" },
-    { title: "Palette", value: `${TUI_THEMES.length}`, subtitle: "available themes" }
+    { title: "Motion", value: motion, subtitle: "M to toggle" },
+    { title: "Colour", value: colorMode, subtitle: "V to cycle" }
   ], width);
 
   const leftWidth = Math.max(28, Math.floor(width * 0.34));
@@ -1013,7 +1023,9 @@ function themesBody(state: TuiState, width: number, height: number, activeTheme:
     `Highlight   ${previewTheme.accentAlt}`,
     `Success     ${previewTheme.success}`,
     "",
-    previewTheme.id === activeTheme.id ? "This theme is currently saved." : "Live preview · press Enter to save."
+    previewTheme.id === activeTheme.id ? "This theme is currently saved." : "Live preview · press Enter to save.",
+    `Motion: ${motion} · press M to toggle`,
+    `Colour: ${colorMode} · press V to cycle`
   ], rightWidth);
 
   return [
@@ -1032,6 +1044,7 @@ function helpBody(width: number): Line[] {
     "Tab / Shift+Tab    Cycle screens",
     "R                  Refresh and scan campaigns",
     "T                  Open the theme gallery",
+    "M / V              Motion and colour controls in Themes",
     "?                  Toggle this help",
     "Q or Ctrl+C        Quit safely",
     "",
@@ -1125,7 +1138,16 @@ function listDetailBody(
   ];
 }
 
-function bodyLines(model: TuiModel, state: TuiState, width: number, height: number, activeTheme: TuiTheme, pulse = false): Line[] {
+function bodyLines(
+  model: TuiModel,
+  state: TuiState,
+  width: number,
+  height: number,
+  activeTheme: TuiTheme,
+  pulse = false,
+  motion: "full" | "reduced" = "full",
+  colorMode: "auto" | "always" | "never" = "auto"
+): Line[] {
   if (state.helpOpen) return helpBody(width);
   switch (state.screen) {
     case "home": return homeBody(model, state, width, height, pulse);
@@ -1137,7 +1159,7 @@ function bodyLines(model: TuiModel, state: TuiState, width: number, height: numb
     case "path": return pathBody(model, state, width, height);
     case "log": return logBody(model, state, width, height);
     case "share": return shareBody(model, state, width, height);
-    case "themes": return themesBody(state, width, height, activeTheme);
+    case "themes": return themesBody(state, width, height, activeTheme, motion, colorMode);
   }
 }
 
@@ -1445,7 +1467,7 @@ function footerControls(state: TuiState): string {
   if (state.screen === "path") return "↑↓ Select  Enter Choose Path  ←→ Screens  / Commands  Q Quit";
   if (state.screen === "share") return "↑↓ Format  Enter Export  ←→ Screens  / Commands  Q Quit";
   if (state.screen === "chapters") return "↑↓ Chapters  Enter Detail  ←→ Screens  / Commands  Q Quit";
-  if (state.screen === "themes") return "↑↓ Preview  Enter Save  Esc Cancel  / Commands  Q Quit";
+  if (state.screen === "themes") return "↑↓ Preview  Enter Save  M Motion  V Colour  Esc Cancel  / Commands  Q Quit";
   return "↑↓ Move  ←→ Screens  Enter Open  R Refresh  / Commands  T Themes  ? Help  Q Quit";
 }
 
@@ -1489,7 +1511,7 @@ export function renderTui(
 
   let lines: Line[];
   if (state.screen === "home" && !state.helpOpen) {
-    const body = bodyLines(model, state, width, height - 1, activeTheme, options.pulse ?? false).slice(0, height - 1);
+    const body = bodyLines(model, state, width, height - 1, activeTheme, options.pulse ?? false, options.motion ?? "full", options.colorMode ?? "auto").slice(0, height - 1);
     while (body.length < height - 1) body.push({ text: "" });
     lines = [...body, footer];
   } else {
@@ -1501,7 +1523,7 @@ export function renderTui(
     const fixedLines = 5;
     const bodyHeight = height - fixedLines;
     const body = padLines(
-      bodyLines(model, state, width, bodyHeight, activeTheme, options.pulse ?? false).map((line) => line.text),
+      bodyLines(model, state, width, bodyHeight, activeTheme, options.pulse ?? false, options.motion ?? "full", options.colorMode ?? "auto").map((line) => line.text),
       width,
       bodyHeight
     );

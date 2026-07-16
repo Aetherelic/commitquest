@@ -20,6 +20,12 @@ import { bossBeginCommand, bossCompleteCommand, bossStatusCommand } from "./comm
 import { CLASS_IDS, classChooseCommand, classListCommand } from "./commands/classes.js";
 import { SHARE_FORMATS, shareCommand } from "./commands/share.js";
 import { APP_VERSION } from "./version.js";
+import { completionCommand } from "./commands/completion.js";
+import { settingsCommand } from "./commands/settings.js";
+import { privacyCommand } from "./commands/privacy.js";
+import { cleanupCommand } from "./commands/cleanup.js";
+import { uninstallCommand } from "./commands/uninstall.js";
+import { COMPLETION_SHELLS, type CompletionShell } from "./core/completion.js";
 import { hookStatusCommand, installHookCommand, removeHookCommand } from "./commands/hook.js";
 import {
   abandonCustomQuestCommand,
@@ -205,6 +211,46 @@ developerClass.action(classListCommand);
 const share = program.command("share").description("Export a privacy-safe journey card");
 share.addOption(new Option("--format <format>").choices(SHARE_FORMATS).default("svg"));
 share.option("--output <path>", "output path").option("--name <name>", "public display name").option("--include-projects", "include campaign names; paths and commit subjects remain hidden").action(shareCommand);
+
+const settings = program
+  .command("settings")
+  .description("View or change persistent interface settings")
+  .option("--theme <theme>", "set the persistent TUI theme")
+  .option("--reset", "restore default interface settings");
+settings.addOption(new Option("--motion <mode>", "set motion preference").choices(["full", "reduced"]));
+settings.addOption(new Option("--color <mode>", "set colour preference").choices(["auto", "always", "never"]));
+settings.action(settingsCommand);
+
+program
+  .command("privacy")
+  .description("Audit local data and privacy defaults")
+  .option("--json", "print machine-readable audit data")
+  .action(privacyCommand);
+
+program
+  .command("cleanup")
+  .description("Preview or remove old backups and crash reports")
+  .option("--apply", "remove the listed files")
+  .option("--keep-backups <number>", "number of newest backups to retain", "10")
+  .option("--keep-crashes <number>", "number of newest crash reports to retain", "20")
+  .action(cleanupCommand);
+
+program
+  .command("completion <shell>")
+  .description("Print shell completion for bash, zsh, or fish")
+  .action((shell: string) => {
+    if (!COMPLETION_SHELLS.includes(shell as CompletionShell)) {
+      throw new Error(`Unknown shell “${shell}”. Choose: ${COMPLETION_SHELLS.join(", ")}`);
+    }
+    completionCommand(shell as CompletionShell);
+  });
+
+program
+  .command("uninstall")
+  .description("Remove a local npm installation while preserving data by default")
+  .option("--yes", "confirm application removal")
+  .option("--purge-data", "also remove progress, backups, shares, and settings")
+  .action(uninstallCommand);
 
 program
   .command("doctor")

@@ -16,6 +16,8 @@ export function verboseVersionCommand(): void {
     console.log(`Database schema: ${DATABASE_SCHEMA_VERSION}`);
     console.log(`Node runtime: ${process.version}`);
     console.log(`Theme: ${settings.theme}`);
+    console.log(`Motion: ${settings.motion}`);
+    console.log(`Colour: ${settings.color}`);
     console.log(`Class title: ${selectedClassTitle(db)}`);
     console.log(`Last repair: ${getMeta(db, "doctor.last-repair") ?? "never"}`);
   } finally {
