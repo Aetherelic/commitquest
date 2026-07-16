@@ -2,6 +2,7 @@ import chalk from "chalk";
 import { formatRelativeDate } from "../core/dates.js";
 import { customQuestObjectiveLabel } from "../core/custom-quests.js";
 import { HOME_MENU } from "./navigation.js";
+import { getTuiTheme, TUI_THEMES, type TuiTheme } from "./theme.js";
 import type {
   TerminalSize,
   TuiActivity,
@@ -15,20 +16,38 @@ const ANSI_PATTERN = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const FOOTER_CREDIT = "Made with <3 by Aetherelic";
 const MIN_WIDTH = 68;
 const MIN_HEIGHT = 20;
+const APP_VERSION = "v0.1.0";
 
 interface RenderOptions {
   color?: boolean;
+  theme?: TuiTheme;
 }
 
-type Tone = "normal" | "accent" | "dim" | "success" | "warning" | "selected" | "danger";
+type Tone = "normal" | "accent" | "accentAlt" | "muted" | "success" | "warning" | "danger" | "selected" | "title";
+type Background = "background" | "surface" | "surfaceAlt" | "accent";
 
 interface Line {
   text: string;
   tone?: Tone;
+  background?: Background;
 }
 
-function visibleLength(value: string): number {
-  return value.replace(ANSI_PATTERN, "").length;
+const LOGO_FONT: Record<string, readonly string[]> = {
+  C: ["█████", "█    ", "█    ", "█    ", "█████"],
+  O: ["█████", "█   █", "█   █", "█   █", "█████"],
+  M: ["█   █", "██ ██", "█ █ █", "█   █", "█   █"],
+  I: ["█████", "  █  ", "  █  ", "  █  ", "█████"],
+  T: ["█████", "  █  ", "  █  ", "  █  ", "  █  "],
+  Q: ["█████", "█   █", "█   █", "█  ██", "█████"],
+  U: ["█   █", "█   █", "█   █", "█   █", "█████"],
+  E: ["█████", "█    ", "████ ", "█    ", "█████"],
+  S: ["█████", "█    ", "█████", "    █", "█████"]
+};
+
+function logoRows(word = "COMMITQUEST"): string[] {
+  return Array.from({ length: 5 }, (_, row) =>
+    [...word].map((letter) => LOGO_FONT[letter]?.[row] ?? "     ").join(" ")
+  );
 }
 
 function clip(value: string, width: number): string {
@@ -43,6 +62,12 @@ function fit(value: string, width: number): string {
   return clipped + " ".repeat(Math.max(0, width - clipped.length));
 }
 
+function center(value: string, width: number): string {
+  const clipped = clip(value, width);
+  const left = Math.max(0, Math.floor((width - clipped.length) / 2));
+  return `${" ".repeat(left)}${clipped}`;
+}
+
 function align(left: string, right: string, width: number): string {
   if (right.length >= width) return clip(right, width);
   const availableLeft = Math.max(0, width - right.length - 1);
@@ -54,58 +79,49 @@ function progressBar(value: number, target: number, width: number): string {
   if (width <= 0) return "";
   const percentage = target <= 0 ? 1 : Math.max(0, Math.min(1, value / target));
   const filled = Math.round(percentage * width);
-  return `${"█".repeat(filled)}${"░".repeat(Math.max(0, width - filled))}`;
+  return `${"━".repeat(filled)}${"─".repeat(Math.max(0, width - filled))}`;
 }
 
-function topBorder(width: number): string {
-  const label = " COMMITQUEST ";
-  const remaining = Math.max(0, width - label.length - 2);
-  return `╭─${label}${"─".repeat(Math.max(0, remaining - 1))}╮`;
-}
-
-function divider(width: number, title?: string): string {
-  if (!title) return `├${"─".repeat(Math.max(0, width - 2))}┤`;
-  const label = ` ${title.toUpperCase()} `;
-  const remaining = Math.max(0, width - label.length - 2);
-  return `├─${label}${"─".repeat(Math.max(0, remaining - 1))}┤`;
-}
-
-function bottomBorder(width: number): string {
-  return `╰${"─".repeat(Math.max(0, width - 2))}╯`;
-}
-
-function paint(value: string, tone: Tone, color: boolean): string {
-  if (!color) return value;
+function foreground(theme: TuiTheme, tone: Tone): string {
   switch (tone) {
-    case "accent":
-      return chalk.magenta(value);
-    case "dim":
-      return chalk.dim(value);
-    case "success":
-      return chalk.green(value);
-    case "warning":
-      return chalk.yellow(value);
-    case "selected":
-      return chalk.black.bgMagenta.bold(value);
-    case "danger":
-      return chalk.red(value);
-    case "normal":
-      return value;
+    case "accent": return theme.accent;
+    case "accentAlt": return theme.accentAlt;
+    case "muted": return theme.muted;
+    case "success": return theme.success;
+    case "warning": return theme.warning;
+    case "danger": return theme.danger;
+    case "selected": return theme.background;
+    case "title": return theme.text;
+    case "normal": return theme.text;
   }
 }
 
-function framedLine(line: Line, innerWidth: number, color: boolean): string {
-  const body = fit(line.text, innerWidth);
-  return `${paint("│", "accent", color)}${paint(body, line.tone ?? "normal", color)}${paint("│", "accent", color)}`;
+function background(theme: TuiTheme, value: Background): string {
+  switch (value) {
+    case "background": return theme.background;
+    case "surface": return theme.surface;
+    case "surfaceAlt": return theme.surfaceAlt;
+    case "accent": return theme.accent;
+  }
+}
+
+function renderLine(line: Line, width: number, theme: TuiTheme, color: boolean): string {
+  const text = fit(line.text, width);
+  if (!color) return text;
+  const tone = line.tone ?? "normal";
+  const backgroundTone = line.background ?? (tone === "selected" ? "accent" : "background");
+  let styler = chalk.bgHex(background(theme, backgroundTone)).hex(foreground(theme, tone));
+  if (tone === "title" || tone === "selected") styler = styler.bold;
+  return styler(text);
 }
 
 function panel(title: string, lines: string[], width: number): string[] {
   if (width < 12) return lines.map((line) => clip(line, width));
   const inner = width - 2;
   const label = ` ${title} `;
-  const top = `╭─${clip(label, Math.max(0, width - 4))}${"─".repeat(Math.max(0, width - 3 - Math.min(label.length, width - 4)))}╮`;
+  const labelWidth = Math.min(label.length, Math.max(0, width - 4));
   return [
-    top,
+    `╭─${clip(label, labelWidth)}${"─".repeat(Math.max(0, width - 3 - labelWidth))}╮`,
     ...lines.map((line) => `│${fit(line, inner)}│`),
     `╰${"─".repeat(inner)}╯`
   ];
@@ -158,54 +174,46 @@ function questRows(model: TuiModel): Array<{
 }
 
 function homeBody(model: TuiModel, state: TuiState, width: number, height: number): Line[] {
-  const selected = HOME_MENU[state.homeIndex] ?? HOME_MENU[0]!;
   const activeQuest = questRows(model).find((quest) => quest.state === "active") ?? null;
-  const menuLines = HOME_MENU.map((item, index) => `${index === state.homeIndex ? "▶" : " "} ${item.title}`);
-  const detailLines = [
-    selected.title,
-    "",
-    selected.description,
-    "",
-    activeQuest ? "CURRENT OBJECTIVE" : "JOURNEY STATUS",
-    activeQuest ? activeQuest.title : "No active objectives",
-    activeQuest ? `${progressBar(activeQuest.progress, activeQuest.target, 18)}  ${activeQuest.progress}/${activeQuest.target}` : "Create a custom quest or keep shipping.",
-    activeQuest ? `Reward: +${activeQuest.reward} XP` : `${model.stats.commits} commits across ${model.stats.repositories} campaigns`
+  const logo = logoRows();
+  const menuWidth = Math.min(78, Math.max(58, width - 12));
+  const menuLines = HOME_MENU.map((item, index): Line => {
+    const marker = index === state.homeIndex ? ">" : " ";
+    const commandWidth = 15;
+    const shortcutWidth = 8;
+    const descriptionWidth = Math.max(16, menuWidth - commandWidth - shortcutWidth - 5);
+    const row = `${marker} ${item.command.padEnd(commandWidth)} ${clip(item.description, descriptionWidth).padEnd(descriptionWidth)} ${item.shortcut.padStart(shortcutWidth)}`;
+    return {
+      text: center(row, width),
+      tone: index === state.homeIndex ? "accent" : "normal"
+    };
+  });
+
+  const status = `Level ${model.level.level} · ${model.level.title}     ${model.level.xpIntoLevel}/${model.level.xpNeeded} XP     ${model.streak.current} day streak`;
+  const objective = activeQuest
+    ? `${activeQuest.title}  ${progressBar(activeQuest.progress, activeQuest.target, 14)}  ${activeQuest.progress}/${activeQuest.target}  +${activeQuest.reward} XP`
+    : `${model.stats.commits} commits · ${model.stats.repositories} campaigns · no active objective`;
+  const notification = model.notice
+    ?? (model.warnings[0] ? `Warning · ${model.warnings[0]}` : "Choose a path and continue your journey.");
+
+  const content: Line[] = [
+    ...logo.map((text) => ({ text: center(text, width), tone: "accent" as const })),
+    { text: center(`COMMITQUEST ${APP_VERSION}  ·  level up by shipping real work`, width), tone: "muted" },
+    { text: "" },
+    { text: center(status, width), tone: "accentAlt" },
+    { text: "" },
+    ...menuLines,
+    { text: "" },
+    { text: center("CURRENT OBJECTIVE", width), tone: "muted" },
+    { text: center(objective, width), tone: activeQuest ? "success" : "muted" },
+    { text: center(notification, width), tone: model.warnings.length > 0 ? "warning" : "muted" }
   ];
 
-  const lines: Line[] = [
-    { text: "TODAY'S JOURNEY", tone: "accent" },
-    { text: model.notice ?? (model.warnings[0] ? `Warning: ${model.warnings[0]}` : "Your campaigns are ready."), tone: model.warnings.length > 0 ? "warning" : "dim" },
-    { text: "" }
+  const topPadding = Math.max(0, Math.floor((height - content.length) / 2));
+  return [
+    ...Array.from({ length: topPadding }, () => ({ text: "" })),
+    ...content
   ];
-
-  if (width >= 88) {
-    const leftWidth = Math.min(34, Math.floor(width * 0.38));
-    const rightWidth = width - leftWidth - 2;
-    const joined = columns(
-      panel("Main Menu", menuLines, leftWidth),
-      panel("Selected", detailLines, rightWidth),
-      leftWidth,
-      rightWidth
-    );
-    for (const line of joined) {
-      const menuIndex = lines.length - 3 - 1;
-      lines.push({ text: line, tone: menuIndex === state.homeIndex ? "normal" : "normal" });
-    }
-  } else {
-    lines.push(...panel("Main Menu", menuLines, width).map((text, index) => ({
-      text,
-      tone: index === state.homeIndex + 1 ? "selected" as const : "normal" as const
-    })));
-    lines.push({ text: "" });
-    lines.push(...panel("Selected", detailLines, width).map((text) => ({ text })));
-  }
-
-  if (model.stats.repositories === 0 && lines.length < height - 2) {
-    lines.push({ text: "" });
-    lines.push({ text: "No campaigns yet. Leave the app and run: cq add .", tone: "warning" });
-  }
-
-  return lines;
 }
 
 function listDetailBody(
@@ -218,7 +226,7 @@ function listDetailBody(
   if (items.length === 0) {
     return [
       { text: "" },
-      { text: emptyMessage, tone: "dim" }
+      { text: emptyMessage, tone: "muted" }
     ];
   }
 
@@ -228,12 +236,12 @@ function listDetailBody(
   const window = selectedWindow(items, safeSelected, listCapacity);
   const listLines = window.items.map((item, index) => {
     const absolute = window.offset + index;
-    const marker = absolute === safeSelected ? "▶" : item.complete ? "◆" : "◇";
-    return `${marker} ${clip(item.label, 24)}  ${clip(item.meta, 15)}`;
+    const marker = absolute === safeSelected ? ">" : item.complete ? "◆" : "◇";
+    return `${marker} ${clip(item.label, 26)}  ${clip(item.meta, 16)}`;
   });
 
   if (width >= 92) {
-    const leftWidth = Math.min(46, Math.floor(width * 0.48));
+    const leftWidth = Math.min(48, Math.floor(width * 0.46));
     const rightWidth = width - leftWidth - 2;
     const joined = columns(
       panel("Select", listLines, leftWidth),
@@ -243,14 +251,14 @@ function listDetailBody(
     );
     return joined.map((text, index) => ({
       text,
-      tone: index === safeSelected - window.offset + 1 ? "selected" : "normal"
+      tone: index === safeSelected - window.offset + 1 ? "accent" : "normal"
     }));
   }
 
   return [
     ...panel("Select", listLines, width).map((text, index) => ({
       text,
-      tone: index === safeSelected - window.offset + 1 ? "selected" as const : "normal" as const
+      tone: index === safeSelected - window.offset + 1 ? "accent" as const : "normal" as const
     })),
     { text: "" },
     ...panel("Details", current.detail, width).map((text) => ({ text }))
@@ -371,14 +379,37 @@ function logBody(model: TuiModel, state: TuiState, width: number, height: number
   return listDetailBody(items, state.selected.log, width, height, "Your adventure log is empty.");
 }
 
+function themesBody(state: TuiState, width: number, height: number, activeTheme: TuiTheme): Line[] {
+  const items = TUI_THEMES.map((theme) => ({
+    label: theme.name,
+    meta: theme.id === activeTheme.id ? "ACTIVE" : "PREVIEW",
+    complete: theme.id === activeTheme.id,
+    detail: [
+      theme.name,
+      theme.description,
+      "",
+      `Background  ${theme.background}`,
+      `Surface     ${theme.surface}`,
+      `Accent      ${theme.accent}`,
+      `Highlight   ${theme.accentAlt}`,
+      `Success     ${theme.success}`,
+      "",
+      theme.id === activeTheme.id ? "This theme is currently saved." : "Live preview · press Enter to save.",
+      "Saved themes return when CommitQuest reopens."
+    ]
+  }));
+  return listDetailBody(items, state.selected.themes, width, height, "No themes are installed.");
+}
+
 function helpBody(width: number): Line[] {
   return panel("Controls", [
     "↑ / ↓ or J / K     Move through items",
     "← / → or H / L     Change screen",
-    "Enter              Open selected menu",
-    "Esc                Return home / close help",
+    "Enter              Open menu / save selected theme",
+    "Esc                Return home / cancel theme preview",
     "Tab / Shift+Tab    Cycle screens",
     "R                  Refresh and scan campaigns",
+    "T                  Open the theme gallery",
     "?                  Toggle this help",
     "Q or Ctrl+C        Quit safely",
     "",
@@ -396,10 +427,25 @@ function screenTitle(state: TuiState): string {
     case "achievements": return "Achievements";
     case "progress": return "Progress";
     case "log": return "Adventure Log";
+    case "themes": return "Themes";
   }
 }
 
-function bodyLines(model: TuiModel, state: TuiState, width: number, height: number): Line[] {
+function screenTabs(state: TuiState, width: number): string {
+  const entries: Array<[TuiState["screen"], string]> = [
+    ["home", "HOME"],
+    ["quests", "QUESTS"],
+    ["campaigns", "CAMPAIGNS"],
+    ["achievements", "BADGES"],
+    ["progress", "PROGRESS"],
+    ["log", "LOG"],
+    ["themes", "THEMES"]
+  ];
+  const value = entries.map(([screen, label]) => screen === state.screen ? `[ ${label} ]` : `  ${label}  `).join(" ");
+  return center(value, width);
+}
+
+function bodyLines(model: TuiModel, state: TuiState, width: number, height: number, activeTheme: TuiTheme): Line[] {
   if (state.helpOpen) return helpBody(width);
   switch (state.screen) {
     case "home": return homeBody(model, state, width, height);
@@ -408,22 +454,24 @@ function bodyLines(model: TuiModel, state: TuiState, width: number, height: numb
     case "achievements": return achievementsBody(model, state, width, height);
     case "progress": return progressBody(model, width);
     case "log": return logBody(model, state, width, height);
+    case "themes": return themesBody(state, width, height, activeTheme);
   }
 }
 
-function compactScreen(size: TerminalSize, color: boolean): string {
+function compactScreen(size: TerminalSize, theme: TuiTheme, color: boolean): string {
   const width = Math.max(30, size.width);
-  const lines = [
-    paint("COMMITQUEST", "accent", color),
-    "",
-    `Terminal too small: ${size.width}×${size.height}`,
-    `Minimum recommended size: ${MIN_WIDTH}×${MIN_HEIGHT}`,
-    "",
-    "Resize the terminal or press Q to quit.",
-    "",
-    FOOTER_CREDIT
+  const height = Math.max(8, size.height);
+  const lines: Line[] = [
+    { text: center("COMMITQUEST", width), tone: "accent", background: "surface" },
+    { text: "" },
+    { text: center(`Terminal too small: ${size.width}×${size.height}`, width), tone: "warning" },
+    { text: center(`Minimum recommended size: ${MIN_WIDTH}×${MIN_HEIGHT}`, width), tone: "muted" },
+    { text: "" },
+    { text: center("Resize the terminal or press Q to quit.", width) }
   ];
-  return lines.map((line) => clip(line, width)).join("\n");
+  while (lines.length < height - 1) lines.push({ text: "" });
+  lines.push({ text: align("", FOOTER_CREDIT, width), tone: "muted", background: "surface" });
+  return lines.slice(0, height).map((line) => renderLine(line, width, theme, color)).join("\n");
 }
 
 export function renderTui(
@@ -433,36 +481,50 @@ export function renderTui(
   options: RenderOptions = {}
 ): string {
   const color = options.color ?? true;
+  const activeTheme = options.theme ?? getTuiTheme(null);
+  const previewTheme = state.screen === "themes" && !state.helpOpen
+    ? TUI_THEMES[state.selected.themes] ?? activeTheme
+    : activeTheme;
   const width = Math.max(30, size.width);
   const height = Math.max(8, size.height);
-  if (width < MIN_WIDTH || height < MIN_HEIGHT) return compactScreen({ width, height }, color);
+  if (width < MIN_WIDTH || height < MIN_HEIGHT) return compactScreen({ width, height }, previewTheme, color);
 
-  const innerWidth = width - 2;
-  const bodyHeight = height - 7;
-  const headerLeft = `${model.profile.name} · ${model.stats.repositories} campaign${model.stats.repositories === 1 ? "" : "s"}`;
-  const headerRight = `Level ${model.level.level} · ${model.level.title}`;
-  const xpWidth = Math.max(12, Math.min(32, innerWidth - 34));
-  const xpLeft = `${progressBar(model.level.xpIntoLevel, model.level.xpNeeded, xpWidth)}  ${model.level.xpIntoLevel}/${model.level.xpNeeded} XP`;
-  const xpRight = `${model.streak.current} day streak · ${model.totalXp.toLocaleString()} total XP`;
+  const footerLeft = state.screen === "themes"
+    ? "↑↓ Preview  Enter Save  Esc Cancel  T Themes  ? Help  Q Quit"
+    : "↑↓ Move  ←→ Screens  Enter Open  R Refresh  T Themes  ? Help  Q Quit";
+  const footer: Line = {
+    text: align(footerLeft, FOOTER_CREDIT, width),
+    tone: "muted",
+    background: "surface"
+  };
 
-  const body = bodyLines(model, state, innerWidth, bodyHeight).slice(0, bodyHeight);
-  while (body.length < bodyHeight) body.push({ text: "" });
+  let lines: Line[];
+  if (state.screen === "home" && !state.helpOpen) {
+    const body = bodyLines(model, state, width, height - 1, activeTheme).slice(0, height - 1);
+    while (body.length < height - 1) body.push({ text: "" });
+    lines = [...body, footer];
+  } else {
+    const headerLeft = ` COMMITQUEST  ${APP_VERSION}`;
+    const headerRight = `${model.profile.name}  ·  Level ${model.level.level} ${model.level.title} `;
+    const xpWidth = Math.max(12, Math.min(28, width - 46));
+    const xpLeft = ` ${progressBar(model.level.xpIntoLevel, model.level.xpNeeded, xpWidth)}  ${model.level.xpIntoLevel}/${model.level.xpNeeded} XP`;
+    const xpRight = `${model.streak.current} day streak  ·  ${model.totalXp.toLocaleString()} total XP `;
+    const fixedLines = 5;
+    const bodyHeight = height - fixedLines;
+    const body = bodyLines(model, state, width, bodyHeight, activeTheme).slice(0, bodyHeight);
+    while (body.length < bodyHeight) body.push({ text: "" });
 
-  const footerLeft = "↑↓ Move  ←→ Screens  Enter Open  R Refresh  ? Help  Q Quit";
-  const footer = align(footerLeft, FOOTER_CREDIT, innerWidth);
+    lines = [
+      { text: align(headerLeft, headerRight, width), tone: "title", background: "surface" },
+      { text: align(xpLeft, xpRight, width), tone: "muted", background: "surface" },
+      { text: screenTabs(state, width), tone: "accent", background: "surfaceAlt" },
+      { text: ` ${screenTitle(state).toUpperCase()}`, tone: "accentAlt" },
+      ...body,
+      footer
+    ];
+  }
 
-  const output = [
-    paint(topBorder(width), "accent", color),
-    framedLine({ text: align(headerLeft, headerRight, innerWidth) }, innerWidth, color),
-    framedLine({ text: align(xpLeft, xpRight, innerWidth), tone: "dim" }, innerWidth, color),
-    paint(divider(width, screenTitle(state)), "accent", color),
-    ...body.map((line) => framedLine(line, innerWidth, color)),
-    paint(divider(width), "accent", color),
-    framedLine({ text: footer, tone: "dim" }, innerWidth, color),
-    paint(bottomBorder(width), "accent", color)
-  ];
-
-  return output.join("\n");
+  return lines.slice(0, height).map((line) => renderLine(line, width, previewTheme, color)).join("\n");
 }
 
 export function stripAnsi(value: string): string {

@@ -3,7 +3,7 @@ import type { LevelProgress } from "../core/levels.js";
 import type { Profile } from "../core/profile.js";
 import type { StreakResult } from "../core/streak.js";
 
-export type TuiScreen = "home" | "quests" | "campaigns" | "achievements" | "progress" | "log";
+export type TuiScreen = "home" | "quests" | "campaigns" | "achievements" | "progress" | "log" | "themes";
 
 export interface TuiCampaign extends RepositoryRecord {
   commits: number;

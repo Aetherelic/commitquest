@@ -1,3 +1,4 @@
+import { TUI_THEMES, themeIndex, type TuiThemeId } from "./theme.js";
 import type { TuiModel, TuiScreen, TuiState } from "./types.js";
 
 export const SCREEN_ORDER: TuiScreen[] = [
@@ -6,19 +7,23 @@ export const SCREEN_ORDER: TuiScreen[] = [
   "campaigns",
   "achievements",
   "progress",
-  "log"
+  "log",
+  "themes"
 ];
 
 export const HOME_MENU: Array<{
   screen: Exclude<TuiScreen, "home">;
+  command: string;
   title: string;
   description: string;
+  shortcut: string;
 }> = [
-  { screen: "quests", title: "Quest Board", description: "Track active objectives and rewards." },
-  { screen: "campaigns", title: "Campaigns", description: "Explore every tracked repository." },
-  { screen: "achievements", title: "Achievements", description: "View unlocked and hidden badges." },
-  { screen: "progress", title: "Progress", description: "Review levels, streaks, and activity." },
-  { screen: "log", title: "Adventure Log", description: "Replay your latest Git rewards." }
+  { screen: "quests", command: "/quests", title: "Quest Board", description: "active objectives and rewards", shortcut: "enter" },
+  { screen: "campaigns", command: "/campaigns", title: "Campaigns", description: "tracked repositories", shortcut: "enter" },
+  { screen: "achievements", command: "/badges", title: "Achievements", description: "unlocked and hidden badges", shortcut: "enter" },
+  { screen: "progress", command: "/progress", title: "Progress", description: "levels, streaks, and activity", shortcut: "enter" },
+  { screen: "log", command: "/log", title: "Adventure Log", description: "recent Git rewards", shortcut: "enter" },
+  { screen: "themes", command: "/themes", title: "Themes", description: "change the look of CommitQuest", shortcut: "T" }
 ];
 
 export type TuiKey =
@@ -31,18 +36,19 @@ export type TuiKey =
   | "tab"
   | "shift-tab"
   | "refresh"
+  | "themes"
   | "help"
   | "quit"
   | "unknown";
 
-export type TuiEffect = "none" | "refresh" | "quit";
+export type TuiEffect = "none" | "refresh" | "apply-theme" | "quit";
 
 export interface TuiTransition {
   state: TuiState;
   effect: TuiEffect;
 }
 
-export function initialTuiState(): TuiState {
+export function initialTuiState(activeTheme: TuiThemeId = "tokyo-night"): TuiState {
   return {
     screen: "home",
     homeIndex: 0,
@@ -51,7 +57,8 @@ export function initialTuiState(): TuiState {
       campaigns: 0,
       achievements: 0,
       progress: 0,
-      log: 0
+      log: 0,
+      themes: themeIndex(activeTheme)
     },
     helpOpen: false
   };
@@ -76,6 +83,8 @@ export function itemCount(screen: TuiScreen, model: TuiModel): number {
       return Math.max(1, model.commitTypes.length);
     case "log":
       return model.recentActivity.length;
+    case "themes":
+      return TUI_THEMES.length;
   }
 }
 
@@ -128,6 +137,7 @@ export function transitionTui(state: TuiState, key: TuiKey, model: TuiModel): Tu
   if (key === "help") {
     return { state: { ...state, helpOpen: true }, effect: "none" };
   }
+  if (key === "themes") return { state: { ...state, screen: "themes" }, effect: "none" };
   if (key === "tab") return { state: moveScreen(state, 1), effect: "none" };
   if (key === "shift-tab") return { state: moveScreen(state, -1), effect: "none" };
   if (key === "left") return { state: moveScreen(state, -1), effect: "none" };
@@ -147,6 +157,10 @@ export function transitionTui(state: TuiState, key: TuiKey, model: TuiModel): Tu
       state: { ...state, screen: HOME_MENU[state.homeIndex]?.screen ?? "quests" },
       effect: "none"
     };
+  }
+
+  if (key === "enter" && state.screen === "themes") {
+    return { state, effect: "apply-theme" };
   }
 
   return { state, effect: "none" };

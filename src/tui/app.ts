@@ -6,7 +6,9 @@ import {
   transitionTui,
   type TuiKey
 } from "./navigation.js";
+import { loadTuiPreferences, saveTuiPreferences } from "./preferences.js";
 import { renderTui } from "./render.js";
+import { getTuiTheme, TUI_THEMES, type TuiTheme } from "./theme.js";
 import type { TerminalSize, TuiModel, TuiState } from "./types.js";
 
 interface TuiStreams {
@@ -41,6 +43,7 @@ export function keyFromPress(sequence: string | undefined, key: Key | undefined)
   if (key?.name === "tab" && key.shift) return "shift-tab";
   if (key?.name === "tab") return "tab";
   if (sequence === "r" || sequence === "R") return "refresh";
+  if (sequence === "t" || sequence === "T") return "themes";
   if (sequence === "?") return "help";
   if (sequence === "q" || sequence === "Q") return "quit";
   return "unknown";
@@ -62,25 +65,48 @@ function modelWithError(model: TuiModel, error: unknown): TuiModel {
   };
 }
 
+function selectedTheme(state: TuiState, fallback: TuiTheme): TuiTheme {
+  return TUI_THEMES[state.selected.themes] ?? fallback;
+}
+
 export async function launchTui(streams: TuiStreams = {}): Promise<void> {
   const input = streams.input ?? process.stdin;
   const output = streams.output ?? process.stdout;
+  const preferences = loadTuiPreferences();
 
+  let theme = getTuiTheme(preferences.theme);
   let model = loadTuiModel({ scan: true });
-  let state: TuiState = initialTuiState();
+  let state: TuiState = initialTuiState(theme.id);
   let finished = false;
   const rawWasEnabled = Boolean(input.isRaw);
 
   readline.emitKeypressEvents(input);
 
   const draw = (): void => {
-    output.write(`${CLEAR_SCREEN}${renderTui(model, state, terminalSize(output), { color: true })}`);
+    output.write(`${CLEAR_SCREEN}${renderTui(model, state, terminalSize(output), {
+      color: process.env.NO_COLOR === undefined,
+      theme
+    })}`);
   };
 
   const refresh = (): void => {
     try {
       model = loadTuiModel({ scan: true });
       state = clampTuiState(state, model);
+    } catch (error) {
+      model = modelWithError(model, error);
+    }
+  };
+
+  const applyTheme = (): void => {
+    const nextTheme = selectedTheme(state, theme);
+    try {
+      saveTuiPreferences({ theme: nextTheme.id });
+      theme = nextTheme;
+      model = {
+        ...model,
+        notice: `Theme saved · ${nextTheme.name}`
+      };
     } catch (error) {
       model = modelWithError(model, error);
     }
@@ -121,6 +147,7 @@ export async function launchTui(streams: TuiStreams = {}): Promise<void> {
         return;
       }
       if (transition.effect === "refresh") refresh();
+      if (transition.effect === "apply-theme") applyTheme();
       draw();
     };
 

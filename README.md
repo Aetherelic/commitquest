@@ -17,28 +17,30 @@ A local-first Git adventure that turns real development progress into XP, levels
 
 ## What it feels like
 
-Running `cq` opens the full interactive game:
+Running `cq` opens the full interactive game with a focused, OpenCode-inspired landing screen:
 
 ```text
-╭─ COMMITQUEST ───────────────────────────────────────────────────────────────╮
-│Aetherelic · 2 campaigns                              Level 4 · Code Explorer│
-│██████████████░░░░░░░░  145/325 XP                3 day streak · 670 total XP│
-├─ HOME ─────────────────────────────────────────────────────────────────────┤
-│TODAY'S JOURNEY                                                            │
-│                                                                           │
-│╭─ Main Menu ─────────────╮  ╭─ Selected ─────────────────────────────────╮│
-││▶ Quest Board            │  │Ship CommitQuest v0.2                       ││
-││  Campaigns              │  │Create one tagged release                   ││
-││  Achievements           │  │░░░░░░░░░░░░░░░░░░  0/1                    ││
-││  Progress               │  │Reward: +250 XP                             ││
-││  Adventure Log          │  ╰────────────────────────────────────────────╯│
-│╰─────────────────────────╯                                                │
-├───────────────────────────────────────────────────────────────────────────┤
-│↑↓ Move  ←→ Screens  Enter Open  R Refresh     Made with <3 by Aetherelic│
-╰───────────────────────────────────────────────────────────────────────────╯
+              █████ █████ █   █ █   █ █████ █████ █████ █   █ █████ █████ █████
+              █     █   █ ██ ██ ██ ██   █     █   █   █ █   █ █     █       █
+              █     █   █ █ █ █ █ █ █   █     █   █   █ █   █ ████  █████   █
+              █     █   █ █   █ █   █   █     █   █  ██ █   █ █         █   █
+              █████ █████ █   █ █   █ █████   █   █████ █████ █████ █████   █
+
+                         COMMITQUEST v0.1.0 · level up by shipping real work
+
+                    > /quests       active objectives and rewards       enter
+                      /campaigns    tracked repositories                enter
+                      /badges       unlocked and hidden badges          enter
+                      /progress     levels, streaks, and activity       enter
+                      /log          recent Git rewards                  enter
+                      /themes       change the look of CommitQuest          T
+
+↑↓ Move  ←→ Screens  Enter Open  R Refresh  T Themes       Made with <3 by Aetherelic
 ```
 
-Use arrow keys or `H/J/K/L`, `Enter`, `Esc`, `Tab`, `R`, `?`, and `Q`. The UI automatically scans campaigns when it opens, redraws safely when the terminal is resized, and falls back to the classic text dashboard in non-interactive shells.
+Use arrow keys or `H/J/K/L`, `Enter`, `Esc`, `Tab`, `R`, `T`, `?`, and `Q`. The **Themes** screen offers live previews of Tokyo Night, Arcane, Catppuccin, Everforest, and Monochrome. Pressing `Enter` saves the selection to `~/.config/commitquest/settings.json`, so it returns on the next launch.
+
+The UI automatically scans campaigns when it opens, redraws safely when the terminal is resized, and falls back to the classic text dashboard in non-interactive shells.
 
 CommitQuest is deliberately **not** a developer ranking system. Commit counts and streaks are game mechanics, not measurements of skill or worth.
 
@@ -63,7 +65,9 @@ CommitQuest is deliberately **not** a developer ranking system. Commit counts an
 - Track commit types, releases, manual milestones, XP rewards, and optional deadlines
 - Explain when a generic commit did not match an active typed quest
 - Preview commit classification and quest progress before committing
-- Open a full-screen interactive game with quest, campaign, badge, progress, and adventure-log menus
+- Open a full-screen interactive game with quest, campaign, badge, progress, adventure-log, and theme menus
+- Start from a centered block-letter landing screen instead of a dense terminal dashboard
+- Preview and persist five built-in colour themes
 - Navigate entirely by keyboard with safe resize, signal, and non-TTY handling
 
 ## Requirements

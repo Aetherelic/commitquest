@@ -109,7 +109,7 @@ function populatedModel(): TuiModel {
 describe("interactive dashboard rendering", () => {
   it("renders every screen within the requested terminal bounds", () => {
     const model = populatedModel();
-    const screens: TuiScreen[] = ["home", "quests", "campaigns", "achievements", "progress", "log"];
+    const screens: TuiScreen[] = ["home", "quests", "campaigns", "achievements", "progress", "log", "themes"];
 
     for (const screen of screens) {
       const state = { ...initialTuiState(), screen };
@@ -142,6 +142,19 @@ describe("interactive dashboard rendering", () => {
     expect(achievementOutput).toContain("BADGE UNLOCKED");
     expect(achievementOutput).toContain("Ship It");
     expect(achievementOutput).toContain("Made with <3 by Aetherelic");
+  });
+
+  it("renders a live theme preview and saved-theme marker", () => {
+    const state = { ...initialTuiState("tokyo-night"), screen: "themes" as const };
+    const output = renderTui(
+      populatedModel(),
+      state,
+      { width: 100, height: 28 },
+      { color: false }
+    );
+    expect(output).toContain("Tokyo Night");
+    expect(output).toContain("ACTIVE");
+    expect(output).toContain("Saved themes return when CommitQuest reopens");
   });
 
   it("shows a safe resize message in undersized terminals", () => {

@@ -11,6 +11,20 @@ export function getDataDirectory(): string {
   return path.join(os.homedir(), ".local", "share", "commitquest");
 }
 
+export function getConfigDirectory(): string {
+  const override = process.env.COMMITQUEST_HOME;
+  if (override) return path.resolve(override);
+
+  const xdgConfigHome = process.env.XDG_CONFIG_HOME;
+  if (xdgConfigHome) return path.join(xdgConfigHome, "commitquest");
+
+  return path.join(os.homedir(), ".config", "commitquest");
+}
+
 export function getDatabasePath(): string {
   return path.join(getDataDirectory(), "commitquest.db");
+}
+
+export function getSettingsPath(): string {
+  return path.join(getConfigDirectory(), "settings.json");
 }

@@ -81,6 +81,7 @@ describe("TUI keyboard mapping", () => {
     ["h", undefined, "left"],
     ["l", undefined, "right"],
     ["r", undefined, "refresh"],
+    ["t", undefined, "themes"],
     ["?", undefined, "help"],
     ["q", undefined, "quit"],
     ["", key("up"), "up"],
@@ -129,7 +130,7 @@ describe("TUI navigation", () => {
     state = transitionTui(state, "shift-tab", data).state;
     expect(state.screen).toBe("home");
     state = transitionTui(state, "left", data).state;
-    expect(state.screen).toBe("log");
+    expect(state.screen).toBe("themes");
   });
 
   it("opens and closes help without losing the current screen", () => {
@@ -140,6 +141,16 @@ describe("TUI navigation", () => {
     state = transitionTui(state, "escape", data).state;
     expect(state.helpOpen).toBe(false);
     expect(state.screen).toBe("campaigns");
+  });
+
+  it("opens themes directly and emits an apply effect", () => {
+    const data = model();
+    let state = initialTuiState();
+    state = transitionTui(state, "themes", data).state;
+    expect(state.screen).toBe("themes");
+    state = transitionTui(state, "down", data).state;
+    expect(state.selected.themes).toBe(1);
+    expect(transitionTui(state, "enter", data).effect).toBe("apply-theme");
   });
 
   it("emits refresh and quit effects", () => {
