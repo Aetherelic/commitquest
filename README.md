@@ -2,229 +2,88 @@
 
 # ⚔️ CommitQuest
 
-### Level up by shipping real work.
+### Turn real Git progress into a private developer adventure.
 
-A local-first developer RPG that turns real Git activity into campaigns, XP, quests, chapters, release encounters, classes, streaks, and achievements.
+CommitQuest is a local-first terminal RPG that transforms commits, releases and project milestones into **XP, quests, streaks, badges, chapters and boss encounters**.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/Aetherelic/commitquest/ci.yml?branch=main&style=for-the-badge&label=CI)](../../actions/workflows/ci.yml)
-[![Node.js](https://img.shields.io/badge/Node.js-22.5%2B-111827?style=for-the-badge&logo=node.js)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-7-111827?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![SQLite](https://img.shields.io/badge/SQLite-local--first-111827?style=for-the-badge&logo=sqlite)](https://sqlite.org/)
-[![License](https://img.shields.io/badge/License-MIT-111827?style=for-the-badge)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Aetherelic/commitquest?style=flat-square&logo=github&label=release&color=cba6f7)](https://github.com/Aetherelic/commitquest/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/Aetherelic/commitquest/ci.yml?branch=main&style=flat-square&logo=githubactions&label=tests)](https://github.com/Aetherelic/commitquest/actions/workflows/ci.yml)
+[![Node](https://img.shields.io/badge/Node.js-22.5%2B-a6e3a1?style=flat-square&logo=nodedotjs&logoColor=1e1e2e)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-7-89b4fa?style=flat-square&logo=typescript&logoColor=1e1e2e)](https://www.typescriptlang.org/)
+[![Nix](https://img.shields.io/badge/Nix-ready-94e2d5?style=flat-square&logo=nixos&logoColor=1e1e2e)](flake.nix)
+[![License](https://img.shields.io/github/license/Aetherelic/commitquest?style=flat-square&color=f9e2af)](LICENSE)
+
+<br>
+
+<img src="assets/preview-home.png" alt="CommitQuest Prism welcome screen" width="100%">
 
 </div>
 
----
+## ✦ What is CommitQuest?
 
-## The game
+CommitQuest watches the Git repositories you choose and rewards genuine development progress. It stays on your machine, filters activity by your Git identity and never uploads repository contents.
 
-Run one command:
+- **Progression:** XP, levels, streaks, achievements and developer classes
+- **Campaigns:** track repositories, chapters, milestones and release boss battles
+- **Quests:** built-in objectives plus custom project-specific goals
+- **Prism TUI:** full-screen profile, quest, campaign, progress and theme views
+- **16 themes:** every status colour belongs to the selected palette
+- **Recovery:** backups, integrity checks, repair tools and safe cleanup
+- **Sharing:** privacy-safe SVG, Markdown and JSON journey cards
 
-```bash
-cq
-```
+## ✦ Preview
 
-CommitQuest opens a full-screen terminal game with a clean launcher and persistent themes.
+<table>
+  <tr>
+    <td width="50%"><img src="assets/preview-profile.png" alt="CommitQuest profile screen"></td>
+    <td width="50%"><img src="assets/preview-quests.png" alt="CommitQuest quest board"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Profile and progression</strong></td>
+    <td align="center"><strong>Readable quest board</strong></td>
+  </tr>
+</table>
 
-```text
-                         COMMITQUEST v1.1.0
-                     LEVEL UP BY SHIPPING REAL WORK
+<details>
+<summary><strong>Theme browser — Matrix preview</strong></summary>
+<br>
+<img src="assets/preview-themes.png" alt="CommitQuest Matrix theme browser" width="100%">
+</details>
 
-                 Aetherelic · Level 8 Repository Ranger
-                 ━━━━━━━━━━━━━━━━━━━────  720/900 XP
+## ✦ Install
 
-                 > /profile      full journey card
-                   /quests       active objectives
-                   /campaigns    tracked repositories
-                   /chapters     campaign arcs and bosses
-                   /badges       achievement collection
-                   /progress     levels, streaks, and charts
-                   /path         developer class and skills
-                   /log          recent Git rewards
-                   /share        privacy-safe journey cards
-                   /themes       persistent colour themes
+### NixOS / Nix
 
-                                      Made with <3 by Aetherelic
-```
-
-The CLI commands remain available for scripting and recovery, but the intended experience is the interactive application.
-
-## Prism interface
-
-CommitQuest 1.1 keeps the clean welcome screen and gives every secondary page a deliberately designed full-screen layout:
-
-- whitespace and section rules replace dense ASCII box grids
-- list/detail panes use the terminal's horizontal and vertical space
-- semantic colour distinguishes selection, progress, rewards, warnings, and blockers
-- the Profile screen combines level, title, streaks, badges, campaigns, objectives, and recent momentum
-- tall terminals distribute breathing room between sections instead of leaving the interface compressed at the top
-
-Every colour is owned by the selected palette. Matrix uses phosphor-green states, Catppuccin uses Mocha-native mauve, blue, green, yellow, and red, and Monochrome never escapes grayscale.
-
-Curated themes:
-
-- Tokyo Night, Arcane, Catppuccin Mocha, Everforest
-- Matrix, Nord, Rosé Pine, Gruvbox Dark
-- Dracula, Solarized Dark, Monochrome, Obsidian Ink
-- Synthwave, Amber Terminal, Iceberg, Cyberdeck
-
-## Core features
-
-### Real Git progression
-
-- Scans local Git repositories without uploading their contents
-- Awards XP for commits and annotated or lightweight tags
-- Understands conventional commits such as `feat:`, `fix:`, `docs:`, and `test:`
-- Filters commits using the configured Git author email
-- Prevents duplicate XP and duplicate quest rewards
-- Uses daily caps and diminishing rewards to discourage commit farming
-- Supports automatic post-commit rewards without replacing an existing hook
-
-### Quests and campaigns
-
-- Built-in daily, weekly, and monthly quests
-- Guided custom quest creation from inside the TUI
-- Campaign-specific objectives and optional deadlines
-- Automatic objectives for commits, commit types, and releases
-- Manual milestones with explicit completion
-- Campaign archive, restore, path repair, scan, and safe removal
-- Typed confirmation before destructive tracking-data removal
-
-### Chapters and boss encounters
-
-Every campaign receives a persistent story arc:
-
-```text
-◆ Chapter I     The First Quest
-> Chapter II    Gathering Momentum
-· Chapter III   The Questmaster's Ledger
-· Chapter IV    Face the First Boss
-· Chapter V     A Lasting Campaign
-```
-
-Prepare a release encounter:
+Install directly from GitHub:
 
 ```bash
-cq boss begin commitquest 0.5.0
-cq boss status commitquest 0.5.0 --run-tests
-cq boss complete commitquest 0.5.0 --create-tag
-```
-
-Boss encounters verify the working tree, project version, documentation, changelog, test command, and release tag. CommitQuest can create an annotated **local** tag only after the user explicitly passes `--create-tag`; it never pushes automatically.
-
-### Developer paths
-
-Choose a cosmetic class without XP multipliers or locked features:
-
-- **Architect** — infrastructure, build systems, CI, refactors, and performance
-- **Artificer** — features, interfaces, and visual craft
-- **Sentinel** — fixes, tests, reliability, and reversions
-- **Maintainer** — documentation, chores, and project stewardship
-- **Explorer** — broad experimentation across commit types
-
-```bash
-cq class list
-cq class choose artificer
-```
-
-Each path has five cosmetic titles driven by activity that already occurred naturally.
-
-### Privacy-safe sharing
-
-Generate a local SVG, Markdown profile, or JSON summary:
-
-```bash
-cq share --format svg
-cq share --format markdown --output ./journey.md
-cq share --format json
-```
-
-Default exports exclude:
-
-- repository names
-- repository paths
-- Git email addresses
-- commit subjects
-
-Campaign names are included only with the explicit `--include-projects` flag.
-
-### Stability and recovery
-
-- SQLite integrity checks and WAL checkpointing
-- Automatic backup before every database schema migration
-- Manual backup and restore commands
-- Safety backup before restore
-- Atomic theme preferences
-- TUI crash reports with terminal restoration
-- `cq doctor --repair` for safe local repairs
-- Detailed executable, runtime, schema, and theme diagnostics
-- Deterministic local installer with an absolute Node runtime path
-- Nix package that wraps Node and Git
-
-```bash
-cq version --verbose
-cq doctor
-cq doctor --repair
-cq backup
-cq backup list
-cq backup restore latest --yes
-```
-
-### Stable-release essentials
-
-CommitQuest 1.0 completes the local application lifecycle:
-
-- persistent reduced-motion and colour preferences
-- shell completion generation for Bash, Zsh, and Fish
-- a local privacy audit with JSON output
-- preview-first cleanup for old backups and crash reports
-- safe local uninstallation that preserves progress by default
-- a manual page in the Nix and local installations
-- version-consistency and public-package verification through `npm run verify:release`
-
-```bash
-cq settings --motion reduced
-cq settings --color auto
-cq privacy
-cq cleanup
-cq completion fish
-cq uninstall --yes
-```
-
-## Installation
-
-### NixOS or Nix
-
-From the repository:
-
-```bash
-nix profile install .#commitquest
+nix profile install github:Aetherelic/commitquest
 ```
 
 Or launch without installing:
 
 ```bash
-nix run .
+nix run github:Aetherelic/commitquest
 ```
 
-The Nix package wraps its own Node runtime, adds Git to the runtime path, and installs shell completions plus the `commitquest(1)` manual page.
+### Local installation
 
-### Local npm installation
+Requires **Git** and **Node.js 22.5+**.
 
 ```bash
+git clone https://github.com/Aetherelic/commitquest.git
+cd commitquest
 npm ci
 ./scripts/install-local.sh
 ```
 
-The installer builds, runs the complete test suite, copies the package into `~/.local/lib/node_modules`, creates deterministic wrappers in `~/.local/bin`, installs shell completions and the manual page, and verifies the installed version.
-
-Ensure the local bin directory is available:
+Ensure `~/.local/bin` is in your `PATH`:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-## First journey
+## ✦ Begin your journey
 
 ```bash
 cq init
@@ -233,91 +92,49 @@ cq hook install ~/Projects/your-project
 cq
 ```
 
-Opening `cq` also provides interactive onboarding for the profile, first campaign, live rewards, and theme.
+The post-commit hook is optional. CommitQuest will not overwrite an existing hook.
 
-## Interactive controls
+## ✦ Essential commands
 
-```text
-↑ / ↓ or J / K      Move through items
-← / → or H / L      Change screen
-Enter               Open, choose, submit, or export
-Esc                 Back or cancel
-Tab / Shift+Tab     Cycle screens or form fields
-/                   Searchable command palette
-R                   Refresh active campaigns
-T                   Theme gallery
-?                   Help
-Q or Ctrl+C         Quit safely
-```
+| Command | Purpose |
+|---|---|
+| `cq` | Open the full-screen Prism interface |
+| `cq scan` | Import new eligible Git activity |
+| `cq quests` | View current objectives |
+| `cq chapters` | View campaign arcs and progression |
+| `cq boss` | Prepare and complete release encounters |
+| `cq class list` | Explore developer paths |
+| `cq share --format svg` | Export a privacy-safe journey card |
+| `cq backup` | Create or restore local backups |
+| `cq doctor` | Check installation and database health |
+| `cq settings` | Configure theme, colour and motion |
 
-Quest and campaign screens display their contextual actions in the footer.
+Run `cq --help` for the complete command reference.
 
-## Advanced commands
+## ✦ Themes
 
-```text
-cq scan [--repo <campaign>]
-cq status
-cq log [-n 20]
-cq quests
-cq quest add|list|show|complete|abandon|check
-cq chapters [--repo <campaign>]
-cq boss begin|status|complete
-cq class list|choose
-cq share
-cq backup create|list|restore
-cq hook install|status|remove
-cq profile
-cq settings
-cq privacy [--json]
-cq cleanup [--apply]
-cq completion bash|zsh|fish
-cq uninstall --yes [--purge-data]
-cq doctor [--repair]
-cq version --verbose
-```
+Prism includes **Tokyo Night, Arcane, Catppuccin Mocha, Everforest, Matrix, Nord, Rosé Pine, Gruvbox Dark, Dracula, Solarized Dark, Monochrome, Obsidian Ink, Synthwave, Amber Terminal, Iceberg and Cyberdeck**.
 
-## Data locations
+Selections, rewards, warnings and errors always use colours defined by the active theme—Matrix stays phosphor green, Catppuccin stays Mocha, and Monochrome remains grayscale.
 
-CommitQuest follows the XDG base-directory convention:
+## ✦ Local-first by design
 
-```text
-~/.local/share/commitquest/commitquest.db
-~/.local/share/commitquest/backups/
-~/.local/share/commitquest/crash-reports/
-~/.local/share/commitquest/shares/
-~/.config/commitquest/settings.json
-```
-
-Set `COMMITQUEST_HOME` to isolate all data, which is also how the test suite runs.
-
-## Design principles
-
-- **Local-first:** repository contents and progress stay on the machine
-- **Private by default:** sharing requires an explicit export
-- **Celebratory, not judgemental:** Git metrics are game mechanics, not measures of developer quality
-- **No streak punishment:** missing a day does not remove XP or achievements
-- **No silent release actions:** tags and pushes require explicit user intent
-- **Recoverable:** migrations, restores, and TUI failures preserve a path back
-
-## Development
+CommitQuest stores progress in a local SQLite database. Default exports exclude repository paths, Git emails and commit subjects; project names are only included when explicitly requested.
 
 ```bash
-npm ci
-npm run check
+cq privacy
+cq doctor
+cq backup
 ```
 
-Current verification target:
+---
 
-```text
-TypeScript build
-25+ test files
-110+ automated tests
-CLI lifecycle smoke tests
-npm package dry-run
-version and registry consistency audit
-Nix flake package check in CI
-```
+<div align="center">
 
-## Licence
+Built with TypeScript, SQLite and an unreasonable appreciation for beautiful terminals.
 
-CommitQuest is released under the [MIT Licence](LICENSE).
+[Documentation](docs) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [MIT License](LICENSE)
+
+**Made with &lt;3 by [Aetherelic](https://github.com/Aetherelic)**
+
+</div>
