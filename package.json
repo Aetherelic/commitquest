@@ -1,6 +1,6 @@
 {
   "name": "commitquest",
-  "version": "0.2.0",
+  "version": "0.5.0",
   "description": "Turn real Git progress into a private developer adventure.",
   "type": "module",
   "bin": {
@@ -10,7 +10,9 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "CHANGELOG.md",
+    "LICENSE",
+    "docs"
   ],
   "scripts": {
     "dev": "tsx src/cli.ts",
@@ -28,7 +30,10 @@
     "developer-tools",
     "cli",
     "productivity",
-    "local-first"
+    "local-first",
+    "terminal-ui",
+    "rpg",
+    "sqlite"
   ],
   "author": "Aetherelic",
   "license": "MIT",
