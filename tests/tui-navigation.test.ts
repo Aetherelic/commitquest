@@ -140,7 +140,7 @@ describe("TUI navigation", () => {
     expect(state.homeIndex).toBe(HOME_MENU.length - 1);
 
     state = transitionTui(state, "tab", data).state;
-    expect(state.screen).toBe("quests");
+    expect(state.screen).toBe("profile");
     state = transitionTui(state, "shift-tab", data).state;
     expect(state.screen).toBe("home");
     state = transitionTui(state, "left", data).state;

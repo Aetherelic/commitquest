@@ -175,7 +175,7 @@ function populatedModel(): TuiModel {
 describe("interactive dashboard rendering", () => {
   it("renders every screen within the requested terminal bounds", () => {
     const model = populatedModel();
-    const screens: TuiScreen[] = ["home", "quests", "campaigns", "chapters", "achievements", "progress", "path", "log", "share", "themes"];
+    const screens: TuiScreen[] = ["home", "profile", "quests", "campaigns", "chapters", "achievements", "progress", "path", "log", "share", "themes"];
 
     for (const screen of screens) {
       const state = { ...initialTuiState(), screen };
@@ -197,7 +197,7 @@ describe("interactive dashboard rendering", () => {
       { color: false }
     );
     expect(questOutput).toContain("Ship CommitQuest v0.2");
-    expect(questOutput).toContain("How To Progress");
+    expect(questOutput).toContain("HOW TO PROGRESS");
 
     const achievementOutput = renderTui(
       model,
@@ -215,7 +215,7 @@ describe("interactive dashboard rendering", () => {
     const output = renderTui(
       populatedModel(),
       state,
-      { width: 100, height: 28 },
+      { width: 120, height: 40 },
       { color: false }
     );
     expect(output).toContain("Tokyo Night");
@@ -257,23 +257,23 @@ describe("interactive dashboard rendering", () => {
     expect(pulsed).not.toBe(base);
   });
 
-  it("fills wide quest, campaign, and badge screens with game panels", () => {
+  it("fills wide quest, campaign, and badge screens with intentional layouts", () => {
     const model = populatedModel();
     const size = { width: 150, height: 38 };
     const questOutput = stripAnsi(renderTui(model, { ...initialTuiState(), screen: "quests" }, size, { color: false }));
-    expect(questOutput).toContain("Quest Summary");
-    expect(questOutput).toContain("Next Objectives");
-    expect(questOutput).toContain("How To Progress");
+    expect(questOutput).toContain("QUEST BOARD");
+    expect(questOutput).toContain("NEXT OBJECTIVES");
+    expect(questOutput).toContain("HOW TO PROGRESS");
 
     const campaignOutput = stripAnsi(renderTui(model, { ...initialTuiState(), screen: "campaigns" }, size, { color: false }));
-    expect(campaignOutput).toContain("Campaign Navigator");
-    expect(campaignOutput).toContain("Campaign Overview");
-    expect(campaignOutput).toContain("Recent Campaign Activity");
+    expect(campaignOutput).toContain("CAMPAIGN NAVIGATOR");
+    expect(campaignOutput).toContain("CAMPAIGN PROFILE");
+    expect(campaignOutput).toContain("RECENT CAMPAIGN ACTIVITY");
 
     const badgeOutput = stripAnsi(renderTui(model, { ...initialTuiState(), screen: "achievements" }, size, { color: false }));
-    expect(badgeOutput).toContain("Badge Collection");
-    expect(badgeOutput).toContain("Collection Stats");
-    expect(badgeOutput).toContain("Recent Unlocks");
+    expect(badgeOutput).toContain("BADGE COLLECTION");
+    expect(badgeOutput).toContain("PROFILE BADGE");
+    expect(badgeOutput).toContain("RECENT UNLOCKS");
   });
 
   it("renders reward modals and the richer progress dashboard", () => {
@@ -303,9 +303,9 @@ describe("interactive dashboard rendering", () => {
       { width: 120, height: 36 },
       { color: false }
     ));
-    expect(progressOutput).toContain("Level Progress");
-    expect(progressOutput).toContain("14-Day XP Trend");
-    expect(progressOutput).toContain("Journey Milestones");
+    expect(progressOutput).toContain("LEVEL PROGRESS");
+    expect(progressOutput).toContain("14-DAY XP TREND");
+    expect(progressOutput).toContain("JOURNEY MILESTONES");
   });
 
   it("renders the searchable command palette, forms, confirmations, and onboarding", () => {
@@ -401,15 +401,49 @@ describe("interactive dashboard rendering", () => {
     const model = populatedModel();
     const chapters = renderTui(model, { ...initialTuiState(), screen: "chapters" }, { width: 132, height: 36 }, { color: false });
     expect(chapters).toContain("Face the First Boss");
-    expect(chapters).toContain("Boss Encounters");
+    expect(chapters).toContain("BOSS ENCOUNTERS");
 
     const pathOutput = renderTui(model, { ...initialTuiState(), screen: "path" }, { width: 132, height: 36 }, { color: false });
     expect(pathOutput).toContain("Artificer");
-    expect(pathOutput).toContain("Skill Path");
+    expect(pathOutput).toContain("SKILL PATH");
 
     const share = renderTui(model, { ...initialTuiState(), screen: "share" }, { width: 132, height: 36 }, { color: false });
     expect(share).toContain("PRIVACY SHIELD");
     expect(share).toContain("Repository paths excluded");
+  });
+
+  it("renders a full-screen profile card with identity, progression, badges, and momentum", () => {
+    const profile = stripAnsi(renderTui(
+      populatedModel(),
+      { ...initialTuiState(), screen: "profile" },
+      { width: 150, height: 42 },
+      { color: false }
+    ));
+    expect(profile).toContain("PROFILE");
+    expect(profile).toContain("IDENTITY");
+    expect(profile).toContain("JOURNEY RECORD");
+    expect(profile).toContain("BADGE CABINET");
+    expect(profile).toContain("RECENT MOMENTUM");
+    expect(profile).toContain("AETHERELIC");
+    expect(profile).toContain("Workshop Initiate");
+  });
+
+  it("keeps primary submenu layouts free from bulky box grids", () => {
+    const model = populatedModel();
+    const screens: TuiScreen[] = [
+      "profile", "quests", "campaigns", "chapters", "achievements",
+      "progress", "path", "log", "share", "themes"
+    ];
+    for (const screen of screens) {
+      const output = stripAnsi(renderTui(
+        model,
+        { ...initialTuiState(), screen },
+        { width: 150, height: 42 },
+        { color: false }
+      ));
+      expect(output).not.toContain("╭");
+      expect(output).not.toContain("╰");
+    }
   });
 
   it("shows a safe resize message in undersized terminals", () => {
