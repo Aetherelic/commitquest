@@ -33,6 +33,7 @@ export interface RepositoryRecord {
   defaultBranch: string | null;
   addedAt: string;
   lastScannedAt: string | null;
+  archived: boolean;
 }
 
 export interface Quest {

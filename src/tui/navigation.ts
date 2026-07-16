@@ -35,20 +35,51 @@ export type TuiKey =
   | "escape"
   | "tab"
   | "shift-tab"
+  | "backspace"
+  | "delete"
   | "refresh"
   | "themes"
   | "help"
+  | "palette"
+  | "new"
+  | "edit"
+  | "complete"
+  | "abandon"
+  | "scan"
+  | "repair"
+  | "archive"
+  | "remove"
   | "quit"
   | "unknown";
 
-export type TuiEffect = "none" | "refresh" | "apply-theme" | "quit";
+export type TuiEffect =
+  | "none"
+  | "refresh"
+  | "apply-theme"
+  | "ack-rewards"
+  | "open-palette"
+  | "open-detail"
+  | "quest-create"
+  | "quest-edit"
+  | "quest-complete"
+  | "quest-abandon"
+  | "campaign-add"
+  | "campaign-scan"
+  | "campaign-repair"
+  | "campaign-archive-toggle"
+  | "campaign-remove"
+  | "quit";
 
 export interface TuiTransition {
   state: TuiState;
   effect: TuiEffect;
 }
 
-export function initialTuiState(activeTheme: TuiThemeId = "tokyo-night"): TuiState {
+export function initialTuiState(
+  activeTheme: TuiThemeId = "tokyo-night",
+  modalOpen = false,
+  onboardingRequired = false
+): TuiState {
   return {
     screen: "home",
     homeIndex: 0,
@@ -60,7 +91,9 @@ export function initialTuiState(activeTheme: TuiThemeId = "tokyo-night"): TuiSta
       log: 0,
       themes: themeIndex(activeTheme)
     },
-    helpOpen: false
+    helpOpen: false,
+    modalOpen,
+    overlay: onboardingRequired ? { kind: "onboarding", step: "welcome" } : null
   };
 }
 
@@ -71,42 +104,27 @@ function wrap(value: number, count: number): number {
 
 export function itemCount(screen: TuiScreen, model: TuiModel): number {
   switch (screen) {
-    case "home":
-      return HOME_MENU.length;
-    case "quests":
-      return model.quests.length + model.customQuests.length;
-    case "campaigns":
-      return model.campaigns.length;
-    case "achievements":
-      return model.achievements.length;
-    case "progress":
-      return Math.max(1, model.commitTypes.length);
-    case "log":
-      return model.recentActivity.length;
-    case "themes":
-      return TUI_THEMES.length;
+    case "home": return HOME_MENU.length;
+    case "quests": return model.quests.length + model.customQuests.length;
+    case "campaigns": return model.campaigns.length;
+    case "achievements": return model.achievements.length;
+    case "progress": return Math.max(1, model.commitTypes.length);
+    case "log": return model.recentActivity.length;
+    case "themes": return TUI_THEMES.length;
   }
 }
 
 function moveScreen(state: TuiState, direction: number): TuiState {
   const current = SCREEN_ORDER.indexOf(state.screen);
-  return {
-    ...state,
-    screen: SCREEN_ORDER[wrap(current + direction, SCREEN_ORDER.length)] ?? "home"
-  };
+  return { ...state, screen: SCREEN_ORDER[wrap(current + direction, SCREEN_ORDER.length)] ?? "home" };
 }
 
 function moveSelection(state: TuiState, model: TuiModel, direction: number): TuiState {
   const count = itemCount(state.screen, model);
-  if (state.screen === "home") {
-    return { ...state, homeIndex: wrap(state.homeIndex + direction, count) };
-  }
+  if (state.screen === "home") return { ...state, homeIndex: wrap(state.homeIndex + direction, count) };
   return {
     ...state,
-    selected: {
-      ...state.selected,
-      [state.screen]: wrap(state.selected[state.screen] + direction, count)
-    }
+    selected: { ...state.selected, [state.screen]: wrap(state.selected[state.screen] + direction, count) }
   };
 }
 
@@ -125,18 +143,23 @@ export function clampTuiState(state: TuiState, model: TuiModel): TuiState {
 
 export function transitionTui(state: TuiState, key: TuiKey, model: TuiModel): TuiTransition {
   if (key === "quit") return { state, effect: "quit" };
-  if (key === "refresh") return { state, effect: "refresh" };
 
-  if (state.helpOpen) {
-    if (key === "help" || key === "escape" || key === "enter") {
-      return { state: { ...state, helpOpen: false }, effect: "none" };
-    }
+  if (state.overlay) return { state, effect: "none" };
+
+  if (state.modalOpen) {
+    if (key === "enter" || key === "escape") return { state: { ...state, modalOpen: false }, effect: "ack-rewards" };
     return { state, effect: "none" };
   }
 
-  if (key === "help") {
-    return { state: { ...state, helpOpen: true }, effect: "none" };
+  if (key === "refresh") return { state, effect: "refresh" };
+  if (key === "palette") return { state, effect: "open-palette" };
+
+  if (state.helpOpen) {
+    if (key === "help" || key === "escape" || key === "enter") return { state: { ...state, helpOpen: false }, effect: "none" };
+    return { state, effect: "none" };
   }
+
+  if (key === "help") return { state: { ...state, helpOpen: true }, effect: "none" };
   if (key === "themes") return { state: { ...state, screen: "themes" }, effect: "none" };
   if (key === "tab") return { state: moveScreen(state, 1), effect: "none" };
   if (key === "shift-tab") return { state: moveScreen(state, -1), effect: "none" };
@@ -146,22 +169,24 @@ export function transitionTui(state: TuiState, key: TuiKey, model: TuiModel): Tu
   if (key === "down") return { state: moveSelection(state, model, 1), effect: "none" };
 
   if (key === "escape") {
-    return {
-      state: state.screen === "home" ? state : { ...state, screen: "home" },
-      effect: "none"
-    };
+    return { state: state.screen === "home" ? state : { ...state, screen: "home" }, effect: "none" };
   }
 
   if (key === "enter" && state.screen === "home") {
-    return {
-      state: { ...state, screen: HOME_MENU[state.homeIndex]?.screen ?? "quests" },
-      effect: "none"
-    };
+    return { state: { ...state, screen: HOME_MENU[state.homeIndex]?.screen ?? "quests" }, effect: "none" };
   }
+  if (key === "enter" && state.screen === "themes") return { state, effect: "apply-theme" };
+  if (key === "enter" && state.screen !== "progress") return { state, effect: "open-detail" };
 
-  if (key === "enter" && state.screen === "themes") {
-    return { state, effect: "apply-theme" };
-  }
+  if (key === "new" && state.screen === "quests") return { state, effect: "quest-create" };
+  if (key === "new" && state.screen === "campaigns") return { state, effect: "campaign-add" };
+  if (key === "edit" && state.screen === "quests") return { state, effect: "quest-edit" };
+  if (key === "complete" && state.screen === "quests") return { state, effect: "quest-complete" };
+  if (key === "abandon" && state.screen === "quests") return { state, effect: "quest-abandon" };
+  if (key === "scan" && state.screen === "campaigns") return { state, effect: "campaign-scan" };
+  if (key === "repair" && state.screen === "campaigns") return { state, effect: "campaign-repair" };
+  if (key === "archive" && state.screen === "campaigns") return { state, effect: "campaign-archive-toggle" };
+  if (key === "remove" && state.screen === "campaigns") return { state, effect: "campaign-remove" };
 
   return { state, effect: "none" };
 }

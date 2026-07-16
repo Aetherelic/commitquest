@@ -2,13 +2,16 @@ import chalk from "chalk";
 import { formatRelativeDate } from "../core/dates.js";
 import { customQuestObjectiveLabel } from "../core/custom-quests.js";
 import { HOME_MENU } from "./navigation.js";
+import { filteredPaletteEntries } from "./actions.js";
 import { getTuiTheme, TUI_THEMES, type TuiTheme } from "./theme.js";
 import type {
   TerminalSize,
   TuiActivity,
   TuiCampaign,
   TuiCommitTypeStat,
+  TuiFormOverlay,
   TuiModel,
+  TuiOverlay,
   TuiState
 } from "./types.js";
 
@@ -16,7 +19,7 @@ const ANSI_PATTERN = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const FOOTER_CREDIT = "Made with <3 by Aetherelic";
 const MIN_WIDTH = 68;
 const MIN_HEIGHT = 20;
-const APP_VERSION = "v0.1.2";
+const APP_VERSION = "v0.2.0";
 
 interface RenderOptions {
   color?: boolean;
@@ -436,6 +439,7 @@ function renderQuestColumns(model: TuiModel, state: TuiState, width: number, hei
 
 function campaignDetail(campaign: TuiCampaign): string[] {
   return [
+    campaign.archived ? "◇ ARCHIVED CAMPAIGN" : "◆ ACTIVE CAMPAIGN",
     campaign.name,
     campaign.defaultBranch ? `Branch: ${campaign.defaultBranch}` : "Branch: detached",
     "",
@@ -470,7 +474,7 @@ function campaignsBody(model: TuiModel, state: TuiState, width: number, height: 
     const leftWidth = Math.max(30, Math.floor(width * 0.4));
     const rightWidth = width - leftWidth - 2;
     const { rows } = listRows(
-      model.campaigns.map((campaign) => ({ label: campaign.name, meta: `${campaign.commits} commits` })),
+      model.campaigns.map((campaign) => ({ label: campaign.name, meta: campaign.archived ? "ARCHIVED" : `${campaign.commits} commits` })),
       safeSelected,
       Math.max(5, height - 2)
     );
@@ -491,7 +495,7 @@ function campaignsBody(model: TuiModel, state: TuiState, width: number, height: 
   const { rows } = listRows(
     model.campaigns.map((campaign) => ({
       label: campaign.name,
-      meta: `${campaign.commits}c · +${campaign.earnedXp} XP`
+      meta: campaign.archived ? "ARCHIVED" : `${campaign.commits}c · +${campaign.earnedXp} XP`
     })),
     safeSelected,
     Math.max(5, height - 8)
@@ -508,6 +512,7 @@ function campaignsBody(model: TuiModel, state: TuiState, width: number, height: 
   const [detailHeight, activityHeight] = splitPanelHeights(height, 0.48);
   const middle = stackPanels([
     panelFill("Campaign Profile", [
+      current.archived ? "◇ ARCHIVED · scans paused" : "◆ ACTIVE · scans enabled",
       current.name,
       current.defaultBranch ? `Branch: ${current.defaultBranch}` : "Branch: detached",
       "",
@@ -839,8 +844,11 @@ function helpBody(width: number): Line[] {
     "?                  Toggle this help",
     "Q or Ctrl+C        Quit safely",
     "",
-    "Existing commands such as cq add, cq doctor, and cq quest",
-    "remain available for scripting and advanced use."
+    "/ opens the searchable command palette from any screen.",
+    "Quest screen: N new · E edit · C complete · A abandon.",
+    "Campaign screen: N add · S scan · P repair · X archive · D remove.",
+    "",
+    "Existing commands such as cq add, cq doctor, and cq quest remain available."
   ], width).map((text) => ({ text }));
 }
 
@@ -958,6 +966,261 @@ function applyRewardModal(lines: Line[], model: TuiModel, state: TuiState, width
   return output;
 }
 
+
+function overlayPanel(
+  base: Line[],
+  title: string,
+  content: string[],
+  width: number,
+  height: number,
+  options: { modalWidth?: number; modalHeight?: number; tone?: Tone } = {}
+): Line[] {
+  const modalWidth = Math.min(width - 6, Math.max(48, options.modalWidth ?? Math.floor(width * 0.68)));
+  const requestedHeight = options.modalHeight ?? Math.min(height - 4, content.length + 2);
+  const modalHeight = Math.min(height - 2, Math.max(5, requestedHeight));
+  const box = panelFill(title, content, modalWidth, modalHeight);
+  const top = Math.max(0, Math.floor((height - box.length) / 2));
+  const output = [...base];
+  for (let index = 0; index < box.length && top + index < output.length; index += 1) {
+    output[top + index] = {
+      text: center(box[index] ?? "", width),
+      tone: options.tone ?? (index === 0 ? "accent" : "normal"),
+      background: "surfaceAlt"
+    };
+  }
+  return output;
+}
+
+function formDisplayValue(field: TuiFormOverlay["fields"][number]): string {
+  if (field.kind === "boolean") return field.value === "true" ? "Enabled" : "Disabled";
+  if (field.kind === "choice") {
+    return field.choices?.find((choice) => choice.value === field.value)?.label ?? field.value;
+  }
+  if (field.secret) return "";
+  return field.value || field.placeholder || "";
+}
+
+function formOverlayContent(form: TuiFormOverlay, width: number): string[] {
+  const visible = form.fields.filter((field) => !field.secret);
+  const valueWidth = Math.max(18, width - 28);
+  const rows = visible.flatMap((field, index) => {
+    const selected = index === form.fieldIndex;
+    const marker = selected ? ">" : " ";
+    const value = formDisplayValue(field);
+    const shown = !field.value && field.placeholder ? `(${field.placeholder})` : value;
+    const selector = field.kind === "choice" || field.kind === "boolean" ? "  ← / →" : "";
+    return [
+      `${marker} ${field.label.padEnd(18)} ${clip(shown, valueWidth)}${selector}`,
+      selected && (field.kind === "text" || field.kind === "number")
+        ? `  ${" ".repeat(18)}${"─".repeat(Math.max(8, Math.min(valueWidth, value.length + 1)))}`
+        : ""
+    ];
+  });
+  return [
+    "Use Tab or ↑↓ to move between fields.",
+    "Use ←→ to change choices. Enter advances or submits.",
+    "",
+    ...rows,
+    ...(form.error ? ["", `Error: ${form.error}`] : []),
+    "",
+    `${form.submitLabel}  ·  Esc ${form.cancelLabel}${form.allowSkip ? "  ·  Esc also skips" : ""}`
+  ];
+}
+
+function detailOverlayContent(model: TuiModel, state: TuiState): { title: string; lines: string[] } {
+  if (state.screen === "quests") {
+    const quests = questRows(model);
+    const quest = quests[state.selected.quests];
+    if (!quest) return { title: "Quest Detail", lines: ["No quest selected."] };
+    return {
+      title: quest.title,
+      lines: [
+        quest.state === "active" ? "◇ ACTIVE QUEST" : "◆ COMPLETED QUEST",
+        quest.subtitle,
+        "",
+        quest.description,
+        "",
+        progressBar(quest.progress, quest.target, 52),
+        `${quest.progress}/${quest.target} progress`,
+        `Reward: +${quest.reward} XP`,
+        `Status: ${quest.state}`,
+        "",
+        "Quest controls",
+        "N create · E edit · C complete manual · A abandon",
+        "Esc or Enter returns to the board."
+      ]
+    };
+  }
+  if (state.screen === "campaigns") {
+    const campaign = model.campaigns[state.selected.campaigns];
+    if (!campaign) return { title: "Campaign Detail", lines: ["No campaign selected."] };
+    const activity = model.recentActivity.filter((item) => item.repositoryName === campaign.name).slice(0, 8);
+    return {
+      title: campaign.name,
+      lines: [
+        campaign.archived ? "◇ ARCHIVED CAMPAIGN" : "◆ ACTIVE CAMPAIGN",
+        campaign.defaultBranch ? `Branch: ${campaign.defaultBranch}` : "Detached branch",
+        campaign.path,
+        "",
+        `${campaign.commits} commits · ${campaign.releases} releases · ${campaign.earnedXp} XP`,
+        campaign.lastActivityAt ? `Last activity: ${formatRelativeDate(campaign.lastActivityAt)}` : "Last activity: none",
+        campaign.lastScannedAt ? `Last scan: ${formatRelativeDate(campaign.lastScannedAt)}` : "Last scan: never",
+        "",
+        "Recent activity",
+        ...(activity.length ? activity.map((item) => `◆ ${clip(item.subject, 66)}  +${item.awardedXp} XP`) : ["No activity recorded yet."]),
+        "",
+        "Campaign controls",
+        "N add · S scan · P repair · X archive/restore · D remove",
+        "Esc or Enter returns to the campaign hub."
+      ]
+    };
+  }
+  if (state.screen === "achievements") {
+    const achievement = model.achievements[state.selected.achievements];
+    if (!achievement) return { title: "Badge Detail", lines: ["No badge selected."] };
+    return {
+      title: achievement.title,
+      lines: [
+        achievement.unlocked ? "◆ BADGE UNLOCKED" : "◇ BADGE LOCKED",
+        "",
+        achievement.description,
+        "",
+        `Reward: +${achievement.rewardXp} XP`,
+        achievement.unlockedAt ? `Unlocked: ${formatRelativeDate(achievement.unlockedAt)}` : "Complete the condition to unlock this badge.",
+        "",
+        achievement.unlocked
+          ? "This badge is permanently part of your collection."
+          : "Locked badges never remove progress and cannot be claimed twice.",
+        "",
+        "Esc or Enter returns to the badge collection."
+      ]
+    };
+  }
+  if (state.screen === "log") {
+    const activity = model.recentActivity[state.selected.log];
+    if (!activity) return { title: "Adventure Log Detail", lines: ["No activity selected."] };
+    return {
+      title: activity.subject,
+      lines: [
+        activity.kind === "release" ? "◆ RELEASE REWARD" : `◆ ${activity.type.toUpperCase()} COMMIT`,
+        "",
+        `Campaign: ${activity.repositoryName}`,
+        `Reward: +${activity.awardedXp} XP`,
+        `When: ${formatRelativeDate(activity.occurredAt)}`,
+        `Reference: ${activity.reference}`,
+        "",
+        "This reward is stored locally and cannot be imported twice.",
+        "",
+        "Esc or Enter returns to the adventure log."
+      ]
+    };
+  }
+  return { title: "Detail", lines: ["No expanded detail is available for this page."] };
+}
+
+function applyOverlay(lines: Line[], model: TuiModel, state: TuiState, width: number, height: number): Line[] {
+  const overlay = state.overlay;
+  if (!overlay) return lines;
+
+  if (overlay.kind === "palette") {
+    const entries = filteredPaletteEntries(model, state);
+    const capacity = Math.max(5, Math.min(14, height - 10));
+    const window = selectedWindow(entries, overlay.selected, capacity);
+    const rows = window.items.map((entry, index) => {
+      const absolute = window.offset + index;
+      const marker = absolute === overlay.selected ? ">" : " ";
+      const disabled = entry.enabled ? "" : "  unavailable";
+      return `${marker} ${clip(entry.label, 28).padEnd(30)} ${clip(entry.description, 34)}${disabled}`;
+    });
+    return overlayPanel(lines, "Command Palette", [
+      `> ${overlay.query || "Type to search actions"}`,
+      "",
+      ...(rows.length ? rows : ["No matching actions."]),
+      "",
+      "Enter run · ↑↓ select · Esc close"
+    ], width, height, { modalWidth: Math.min(92, width - 8), modalHeight: Math.min(height - 4, capacity + 6) });
+  }
+
+  if (overlay.kind === "form") {
+    return overlayPanel(lines, overlay.title, formOverlayContent(overlay, Math.min(84, width - 10) - 4), width, height, {
+      modalWidth: Math.min(88, width - 8),
+      modalHeight: Math.min(height - 4, Math.max(13, overlay.fields.filter((field) => !field.secret).length * 2 + 8)),
+      tone: overlay.error ? "warning" : "normal"
+    });
+  }
+
+  if (overlay.kind === "confirm") {
+    const verification = overlay.verification
+      ? ["", `Type “${overlay.verification}” to confirm:`, `> ${overlay.typed}`]
+      : [];
+    return overlayPanel(lines, overlay.title, [
+      ...(overlay.dangerous ? ["⚠ This action changes stored CommitQuest data.", ""] : []),
+      ...overlay.message,
+      ...verification,
+      ...(overlay.error ? ["", `Error: ${overlay.error}`] : []),
+      "",
+      `Enter ${overlay.confirmLabel} · Esc cancel`
+    ], width, height, { modalWidth: Math.min(78, width - 8), tone: overlay.dangerous ? "warning" : "normal" });
+  }
+
+  if (overlay.kind === "detail") {
+    const detail = detailOverlayContent(model, state);
+    return overlayPanel(lines, detail.title, detail.lines, width, height, {
+      modalWidth: Math.min(100, width - 8),
+      modalHeight: Math.min(height - 4, Math.max(16, detail.lines.length + 2))
+    });
+  }
+
+  if (overlay.kind === "onboarding") {
+    const content = overlay.step === "welcome"
+      ? [
+          center("WELCOME TO COMMITQUEST", 58),
+          "",
+          "Turn real Git progress into a private developer adventure.",
+          "",
+          "◆ Commits become XP",
+          "◆ Repositories become campaigns",
+          "◆ Objectives become quests",
+          "◆ Releases become major milestones",
+          "",
+          "Everything remains local by default.",
+          "",
+          "Press Enter to begin your journey."
+        ]
+      : [
+          center("YOUR JOURNEY IS READY", 58),
+          "",
+          "Profile saved · theme selected · campaign setup complete.",
+          "",
+          "Press Enter to open CommitQuest."
+        ];
+    return overlayPanel(lines, overlay.step === "welcome" ? "First Journey" : "Onboarding Complete", content, width, height, {
+      modalWidth: Math.min(70, width - 8),
+      modalHeight: Math.min(height - 4, content.length + 2),
+      tone: "accent"
+    });
+  }
+
+  if (overlay.kind === "notice") {
+    return overlayPanel(lines, overlay.title, [...overlay.lines, "", "Enter or Esc to continue"], width, height, {
+      modalWidth: Math.min(72, width - 8),
+      tone: overlay.tone === "danger" ? "danger" : overlay.tone === "warning" ? "warning" : overlay.tone === "success" ? "success" : "normal"
+    });
+  }
+
+  return lines;
+}
+
+function footerControls(state: TuiState): string {
+  if (state.overlay?.kind === "palette") return "Type Search  ↑↓ Select  Enter Run  Esc Close";
+  if (state.overlay?.kind === "form") return "Tab Fields  ←→ Choice  Enter Next/Submit  Esc Cancel";
+  if (state.overlay) return "Enter Confirm/Open  Esc Back";
+  if (state.screen === "quests") return "↑↓ Move  N New  E Edit  C Complete  A Abandon  Enter Detail  / Commands  Q Quit";
+  if (state.screen === "campaigns") return "↑↓ Move  N Add  S Scan  P Repair  X Archive  D Remove  Enter Detail  / Commands  Q Quit";
+  if (state.screen === "themes") return "↑↓ Preview  Enter Save  Esc Cancel  / Commands  Q Quit";
+  return "↑↓ Move  ←→ Screens  Enter Open  R Refresh  / Commands  T Themes  ? Help  Q Quit";
+}
+
 function compactScreen(size: TerminalSize, theme: TuiTheme, color: boolean): string {
   const width = Math.max(30, size.width);
   const height = Math.max(8, size.height);
@@ -989,9 +1252,7 @@ export function renderTui(
   const height = Math.max(8, size.height);
   if (width < MIN_WIDTH || height < MIN_HEIGHT) return compactScreen({ width, height }, previewTheme, color);
 
-  const footerLeft = state.screen === "themes"
-    ? "↑↓ Preview  Enter Save  Esc Cancel  T Themes  ? Help  Q Quit"
-    : "↑↓ Move  ←→ Screens  Enter Open  R Refresh  T Themes  ? Help  Q Quit";
+  const footerLeft = footerControls(state);
   const footer: Line = {
     text: align(footerLeft, FOOTER_CREDIT, width),
     tone: "muted",
@@ -1027,7 +1288,8 @@ export function renderTui(
     ];
   }
 
-  lines = applyRewardModal(lines, model, state, width, height);
+  if (!state.overlay) lines = applyRewardModal(lines, model, state, width, height);
+  lines = applyOverlay(lines, model, state, width, height);
   return lines.slice(0, height).map((line) => renderLine(line, width, previewTheme, color)).join("\n");
 }
 

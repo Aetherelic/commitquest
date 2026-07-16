@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS repositories (
   path TEXT NOT NULL UNIQUE,
   default_branch TEXT,
   added_at TEXT NOT NULL,
-  last_scanned_at TEXT
+  last_scanned_at TEXT,
+  archived INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS commits (
@@ -89,9 +90,16 @@ CREATE INDEX IF NOT EXISTS custom_quests_status_idx
   ON custom_quests(completed_at, abandoned_at, deadline_at);
 `;
 
-function hasColumn(db: CommitQuestDatabase, table: "commits" | "tags", column: string): boolean {
+function hasColumn(db: CommitQuestDatabase, table: "repositories" | "commits" | "tags", column: string): boolean {
   const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
   return rows.some((row) => row.name === column);
+}
+
+
+function migrateRepositoryArchive(db: CommitQuestDatabase): void {
+  if (!hasColumn(db, "repositories", "archived")) {
+    db.exec("ALTER TABLE repositories ADD COLUMN archived INTEGER NOT NULL DEFAULT 0");
+  }
 }
 
 function migrateQuestEligibility(db: CommitQuestDatabase): void {
@@ -153,6 +161,7 @@ export function openDatabase(): CommitQuestDatabase {
   fs.mkdirSync(getDataDirectory(), { recursive: true });
   const db = new DatabaseSync(getDatabasePath());
   db.exec(SCHEMA);
+  migrateRepositoryArchive(db);
   migrateQuestEligibility(db);
   reconcileQuestEligibilityPrecision(db);
   return db;
@@ -170,18 +179,33 @@ export function setMeta(db: CommitQuestDatabase, key: string, value: string): vo
   `).run(key, value);
 }
 
-export function listRepositories(db: CommitQuestDatabase): RepositoryRecord[] {
-  return db.prepare(`
+export function listRepositories(db: CommitQuestDatabase, includeArchived = true): RepositoryRecord[] {
+  const rows = db.prepare(`
     SELECT
       id,
       name,
       path,
       default_branch AS defaultBranch,
       added_at AS addedAt,
-      last_scanned_at AS lastScannedAt
+      last_scanned_at AS lastScannedAt,
+      archived
     FROM repositories
-    ORDER BY name COLLATE NOCASE
-  `).all() as unknown as RepositoryRecord[];
+    ${includeArchived ? "" : "WHERE archived = 0"}
+    ORDER BY archived ASC, name COLLATE NOCASE
+  `).all() as Array<Record<string, unknown>>;
+  return rows.map(mapRepository);
+}
+
+function mapRepository(row: Record<string, unknown>): RepositoryRecord {
+  return {
+    id: Number(row.id),
+    name: String(row.name),
+    path: String(row.path),
+    defaultBranch: row.defaultBranch === null ? null : String(row.defaultBranch),
+    addedAt: String(row.addedAt),
+    lastScannedAt: row.lastScannedAt === null ? null : String(row.lastScannedAt),
+    archived: Number(row.archived ?? 0) === 1
+  };
 }
 
 export function findRepository(db: CommitQuestDatabase, selector: string): RepositoryRecord | null {
@@ -192,12 +216,13 @@ export function findRepository(db: CommitQuestDatabase, selector: string): Repos
       path,
       default_branch AS defaultBranch,
       added_at AS addedAt,
-      last_scanned_at AS lastScannedAt
+      last_scanned_at AS lastScannedAt,
+      archived
     FROM repositories
     WHERE name = ? COLLATE NOCASE OR path = ?
     LIMIT 1
-  `).get(selector, selector) as RepositoryRecord | undefined;
-  return row ?? null;
+  `).get(selector, selector) as Record<string, unknown> | undefined;
+  return row ? mapRepository(row) : null;
 }
 
 export function addRepository(
@@ -210,10 +235,40 @@ export function addRepository(
     VALUES (?, ?, ?, ?)
     ON CONFLICT(path) DO UPDATE SET
       name = excluded.name,
-      default_branch = excluded.default_branch
+      default_branch = excluded.default_branch,
+      archived = 0
   `).run(input.name, input.path, input.defaultBranch, now);
 
   return findRepository(db, input.path)!;
+}
+
+export function updateRepository(
+  db: CommitQuestDatabase,
+  id: number,
+  input: { name?: string; path?: string; defaultBranch?: string | null }
+): RepositoryRecord {
+  const existing = db.prepare("SELECT id FROM repositories WHERE id = ?").get(id);
+  if (!existing) throw new Error(`Campaign #${id} was not found.`);
+  if (input.name !== undefined) db.prepare("UPDATE repositories SET name = ? WHERE id = ?").run(input.name, id);
+  if (input.path !== undefined) db.prepare("UPDATE repositories SET path = ? WHERE id = ?").run(input.path, id);
+  if (input.defaultBranch !== undefined) db.prepare("UPDATE repositories SET default_branch = ? WHERE id = ?").run(input.defaultBranch, id);
+  const row = db.prepare(`
+    SELECT id, name, path, default_branch AS defaultBranch, added_at AS addedAt,
+      last_scanned_at AS lastScannedAt, archived
+    FROM repositories WHERE id = ?
+  `).get(id) as Record<string, unknown>;
+  return mapRepository(row);
+}
+
+export function setRepositoryArchived(db: CommitQuestDatabase, id: number, archived: boolean): boolean {
+  const result = db.prepare("UPDATE repositories SET archived = ? WHERE id = ?")
+    .run(archived ? 1 : 0, id);
+  return result.changes > 0;
+}
+
+export function removeRepository(db: CommitQuestDatabase, id: number): boolean {
+  const result = db.prepare("DELETE FROM repositories WHERE id = ?").run(id);
+  return result.changes > 0;
 }
 
 export function commitExists(db: CommitQuestDatabase, repositoryId: number, hash: string): boolean {
@@ -414,6 +469,45 @@ export function createCustomQuest(
   );
 
   return getCustomQuest(db, Number(result.lastInsertRowid))!;
+}
+
+export function updateCustomQuest(
+  db: CommitQuestDatabase,
+  id: number,
+  input: {
+    title: string;
+    repositoryId: number | null;
+    objectiveType: CustomQuestObjective;
+    target: number;
+    rewardXp: number;
+    deadlineAt: string | null;
+  }
+): CustomQuestRecord {
+  const current = getCustomQuest(db, id);
+  if (!current) throw new Error(`Custom quest #${id} was not found.`);
+  if (current.completedAt || current.abandonedAt) {
+    throw new Error("Only active custom quests can be edited.");
+  }
+  const changedObjective = current.repositoryId !== input.repositoryId || current.objectiveType !== input.objectiveType;
+  const baseline = changedObjective
+    ? countQuestActivity(db, input.objectiveType, input.repositoryId)
+    : current.baselineCount;
+  db.prepare(`
+    UPDATE custom_quests
+    SET title = ?, repository_id = ?, objective_type = ?, target = ?, reward_xp = ?,
+        deadline_at = ?, baseline_count = ?
+    WHERE id = ?
+  `).run(
+    input.title,
+    input.repositoryId,
+    input.objectiveType,
+    input.target,
+    input.rewardXp,
+    input.deadlineAt,
+    baseline,
+    id
+  );
+  return getCustomQuest(db, id)!;
 }
 
 export function getCustomQuest(db: CommitQuestDatabase, id: number): CustomQuestRecord | null {

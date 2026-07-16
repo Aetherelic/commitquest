@@ -66,12 +66,15 @@ export function scanCommand(options: ScanOptions): void {
   }
 
   const repositories = options.repo
-    ? [findRepository(db, options.repo)].filter((value) => value !== null)
-    : listRepositories(db);
+    ? [findRepository(db, options.repo)].filter((value): value is NonNullable<typeof value> => value !== null && !value.archived)
+    : listRepositories(db, false);
 
   if (repositories.length === 0) {
     if (!options.hook) {
-      console.log(warning(options.repo ? `Campaign not found: ${options.repo}` : "No campaigns tracked yet. Add one with cq add <path>."));
+      const selected = options.repo ? findRepository(db, options.repo) : null;
+      console.log(warning(selected?.archived
+        ? `Campaign is archived: ${selected.name}. Restore it from the TUI before scanning.`
+        : options.repo ? `Campaign not found: ${options.repo}` : "No active campaigns tracked yet. Add one with cq add <path>."));
       process.exitCode = 1;
     }
     db.close();

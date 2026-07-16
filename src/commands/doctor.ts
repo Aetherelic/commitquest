@@ -30,9 +30,11 @@ export function doctorCommand(): void {
   checks.push({ ok: fs.existsSync(getDataDirectory()), message: `Data directory: ${getDataDirectory()}` });
 
   for (const repository of listRepositories(db)) {
+    const valid = isGitRepository(repository.path);
     checks.push({
-      ok: isGitRepository(repository.path),
-      message: `${repository.name}: ${repository.path}`
+      ok: valid || repository.archived,
+      warning: repository.archived && !valid,
+      message: `${repository.name}${repository.archived ? " [archived]" : ""}: ${repository.path}`
     });
   }
 

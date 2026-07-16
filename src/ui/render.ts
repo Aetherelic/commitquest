@@ -76,8 +76,8 @@ export function renderCustomQuests(quests: CustomQuestState[]): string {
 
 export function renderRepositories(repositories: RepositoryRecord[]): string {
   const table = new Table({
-    head: [chalk.bold("Campaign"), chalk.bold("Branch"), chalk.bold("Last scan"), chalk.bold("Path")],
-    colWidths: [22, 18, 16, 56],
+    head: [chalk.bold("Campaign"), chalk.bold("State"), chalk.bold("Branch"), chalk.bold("Last scan"), chalk.bold("Path")],
+    colWidths: [20, 12, 16, 16, 50],
     wordWrap: true,
     style: { head: [], border: [] }
   });
@@ -85,6 +85,7 @@ export function renderRepositories(repositories: RepositoryRecord[]): string {
   for (const repository of repositories) {
     table.push([
       repository.name,
+      repository.archived ? chalk.yellow("archived") : chalk.green("active"),
       repository.defaultBranch ?? chalk.dim("detached"),
       repository.lastScannedAt ? formatRelativeDate(repository.lastScannedAt) : chalk.dim("never"),
       chalk.dim(repository.path)
