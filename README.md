@@ -26,7 +26,7 @@ Running `cq` opens the full interactive game with a focused, OpenCode-inspired l
               █     █   █ █   █ █   █   █     █   █  ██ █   █ █         █   █
               █████ █████ █   █ █   █ █████   █   █████ █████ █████ █████   █
 
-                         COMMITQUEST v0.1.0 · level up by shipping real work
+                         COMMITQUEST v0.1.2 · level up by shipping real work
 
                     > /quests       active objectives and rewards       enter
                       /campaigns    tracked repositories                enter
@@ -66,7 +66,8 @@ CommitQuest is deliberately **not** a developer ranking system. Commit counts an
 - Explain when a generic commit did not match an active typed quest
 - Preview commit classification and quest progress before committing
 - Open a full-screen interactive game with quest, campaign, badge, progress, adventure-log, and theme menus
-- Start from a centered block-letter landing screen instead of a dense terminal dashboard
+- Start from a clean centered block-letter launcher instead of a dense dashboard
+- Use full-height three-column quest, campaign, and badge boards on wide terminals
 - Preview and persist five built-in colour themes
 - Navigate entirely by keyboard with safe resize, signal, and non-TTY handling
 

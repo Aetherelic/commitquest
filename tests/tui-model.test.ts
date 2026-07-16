@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { addRepository, insertCommit, openDatabase } from "../src/data/database.js";
 import { updateProfile } from "../src/core/profile.js";
-import { loadTuiModel } from "../src/tui/model.js";
+import { acknowledgeTuiRewards, loadTuiModel } from "../src/tui/model.js";
 
 const originalHome = process.env.COMMITQUEST_HOME;
 const temporaryHomes: string[] = [];
@@ -66,6 +66,12 @@ describe("TUI model", () => {
     expect(model.commitTypes[0]).toMatchObject({ type: "feat", count: 1, xp: 55 });
     expect(model.achievements.find((badge) => badge.key === "first-commit")?.unlocked).toBe(true);
     expect(model.quests.find((quest) => quest.title === "First Step")?.complete).toBe(true);
+    expect(model.rewardModal?.lines.some((line) => line.includes("Quest complete"))).toBe(true);
+    expect(model.rewardModal?.lines.some((line) => line.includes("Badge unlocked"))).toBe(true);
     expect(model.totalXp).toBeGreaterThan(55);
+
+    acknowledgeTuiRewards("2999-01-01T00:00:00.000Z");
+    const acknowledged = loadTuiModel({ scan: false, now: new Date("2026-07-16T12:00:01.000Z") });
+    expect(acknowledged.rewardModal).toBeNull();
   });
 });

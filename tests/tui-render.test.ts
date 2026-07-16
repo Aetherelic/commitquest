@@ -100,6 +100,7 @@ function populatedModel(): TuiModel {
       { date: "2026-07-16", xp: 220 },
       { date: "2026-07-15", xp: 180 }
     ],
+    rewardModal: null,
     notice: "Journey refreshed · 1 new commit · 0 new releases · +55 activity XP",
     warnings: [],
     refreshedAt: "2026-07-16T12:00:00.000Z"
@@ -131,7 +132,7 @@ describe("interactive dashboard rendering", () => {
       { color: false }
     );
     expect(questOutput).toContain("Ship CommitQuest v0.2");
-    expect(questOutput).toContain("+250 XP");
+    expect(questOutput).toContain("How To Progress");
 
     const achievementOutput = renderTui(
       model,
@@ -139,7 +140,7 @@ describe("interactive dashboard rendering", () => {
       { width: 100, height: 28 },
       { color: false }
     );
-    expect(achievementOutput).toContain("BADGE UNLOCKED");
+    expect(achievementOutput).toContain("◆ UNLOCKED");
     expect(achievementOutput).toContain("Ship It");
     expect(achievementOutput).toContain("Made with <3 by Aetherelic");
   });
@@ -154,7 +155,79 @@ describe("interactive dashboard rendering", () => {
     );
     expect(output).toContain("Tokyo Night");
     expect(output).toContain("ACTIVE");
-    expect(output).toContain("Saved themes return when CommitQuest reopens");
+    expect(output).toContain("This theme is currently saved.");
+  });
+
+
+  it("renders the clean launcher and animated focus states", () => {
+    const model = populatedModel();
+    const base = stripAnsi(renderTui(
+      model,
+      initialTuiState(),
+      { width: 132, height: 42 },
+      { color: false, pulse: false }
+    ));
+    const pulsed = stripAnsi(renderTui(
+      model,
+      initialTuiState(),
+      { width: 132, height: 42 },
+      { color: false, pulse: true }
+    ));
+    expect(base).toContain("CURRENT OBJECTIVE");
+    expect(base).toContain("Latest reward");
+    expect(base).not.toContain("Choose Your Path");
+    expect(pulsed).not.toBe(base);
+  });
+
+  it("fills wide quest, campaign, and badge screens with game panels", () => {
+    const model = populatedModel();
+    const size = { width: 150, height: 38 };
+    const questOutput = stripAnsi(renderTui(model, { ...initialTuiState(), screen: "quests" }, size, { color: false }));
+    expect(questOutput).toContain("Quest Summary");
+    expect(questOutput).toContain("Next Objectives");
+    expect(questOutput).toContain("How To Progress");
+
+    const campaignOutput = stripAnsi(renderTui(model, { ...initialTuiState(), screen: "campaigns" }, size, { color: false }));
+    expect(campaignOutput).toContain("Campaign Navigator");
+    expect(campaignOutput).toContain("Campaign Overview");
+    expect(campaignOutput).toContain("Recent Campaign Activity");
+
+    const badgeOutput = stripAnsi(renderTui(model, { ...initialTuiState(), screen: "achievements" }, size, { color: false }));
+    expect(badgeOutput).toContain("Badge Collection");
+    expect(badgeOutput).toContain("Collection Stats");
+    expect(badgeOutput).toContain("Recent Unlocks");
+  });
+
+  it("renders reward modals and the richer progress dashboard", () => {
+    const model = {
+      ...populatedModel(),
+      rewardModal: {
+        eyebrow: "QUEST COMPLETE",
+        title: "+135 XP earned",
+        lines: ["+55 XP  feat: add game dashboard", "Quest complete · Build Momentum · +80 XP"],
+        totalXp: 135,
+        seenThrough: "2026-07-16T12:00:00.000Z"
+      }
+    };
+    const modalOutput = stripAnsi(renderTui(
+      model,
+      initialTuiState("tokyo-night", true),
+      { width: 120, height: 36 },
+      { color: false }
+    ));
+    expect(modalOutput).toContain("Reward Unlocked");
+    expect(modalOutput).toContain("QUEST COMPLETE");
+    expect(modalOutput).toContain("Enter or Esc to continue");
+
+    const progressOutput = stripAnsi(renderTui(
+      model,
+      { ...initialTuiState(), screen: "progress" },
+      { width: 120, height: 36 },
+      { color: false }
+    ));
+    expect(progressOutput).toContain("Level Progress");
+    expect(progressOutput).toContain("14-Day XP Trend");
+    expect(progressOutput).toContain("Journey Milestones");
   });
 
   it("shows a safe resize message in undersized terminals", () => {
