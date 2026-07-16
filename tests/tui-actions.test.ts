@@ -15,6 +15,7 @@ import {
   availablePaletteEntries,
   executeConfirmedAction,
   executeFormOverlay,
+  executeImmediateAction,
   openTuiAction
 } from "../src/tui/actions.js";
 import { initialTuiState } from "../src/tui/navigation.js";
@@ -44,6 +45,10 @@ function model(overrides: Partial<TuiModel> = {}): TuiModel {
     recentActivity: [],
     commitTypes: [],
     dailyXp: [],
+    chapters: [],
+    bossBattles: [],
+    classes: [],
+    sharePreview: [],
     rewardModal: null,
     notice: null,
     warnings: [],
@@ -180,5 +185,32 @@ describe("interactive campaign actions", () => {
     db = openDatabase();
     expect(listRepositories(db)).toHaveLength(0);
     db.close();
+  });
+});
+
+
+describe("interactive class and share actions", () => {
+  it("chooses a developer path and exports the selected privacy-safe format", () => {
+    const home = temporaryHome();
+    const classState = {
+      id: "artificer" as const,
+      title: "Artificer",
+      description: "Crafts interfaces.",
+      affinityTypes: ["feat" as const, "style" as const],
+      skillTitles: [{ level: 1, title: "Workshop Initiate", description: "Begin." }],
+      selected: false,
+      classXp: 0,
+      classLevel: 1,
+      nextSkillAt: 200,
+      unlockedSkills: [{ level: 1, title: "Workshop Initiate", description: "Begin." }]
+    };
+    const data = model({ classes: [classState], sharePreview: ["private by default"] });
+    const pathState = { ...initialTuiState(), screen: "path" as const };
+    expect(executeImmediateAction("class-choose", data, pathState).notice).toContain("Artificer");
+
+    const shareState = { ...initialTuiState(), screen: "share" as const };
+    const result = executeImmediateAction("share-export", data, shareState);
+    expect(result.notice).toContain("Journey exported");
+    expect(fs.existsSync(path.join(home, "shares", "commitquest-journey.svg"))).toBe(true);
   });
 });

@@ -101,6 +101,69 @@ function populatedModel(): TuiModel {
       { date: "2026-07-16", xp: 220 },
       { date: "2026-07-15", xp: 180 }
     ],
+    chapters: [{
+      id: 1,
+      repositoryId: 1,
+      repositoryName: "commitquest",
+      key: "foundation",
+      title: "The First Quest",
+      description: "Begin the campaign with a rewarded commit.",
+      position: 1,
+      objectiveType: "commit",
+      target: 1,
+      rewardXp: 50,
+      baselineCount: 0,
+      createdAt: "2026-07-16T10:00:00.000Z",
+      completedAt: "2026-07-16T11:00:00.000Z",
+      progress: 1,
+      status: "complete"
+    }, {
+      id: 2,
+      repositoryId: 1,
+      repositoryName: "commitquest",
+      key: "first-release",
+      title: "Face the First Boss",
+      description: "Ship the campaign's first tagged release.",
+      position: 2,
+      objectiveType: "release",
+      target: 1,
+      rewardXp: 250,
+      baselineCount: 0,
+      createdAt: "2026-07-16T10:00:00.000Z",
+      completedAt: null,
+      progress: 0,
+      status: "active"
+    }],
+    bossBattles: [{
+      id: 1,
+      repositoryId: 1,
+      repositoryName: "commitquest",
+      version: "0.5.0",
+      status: "preparing",
+      testCommand: "npm test",
+      releaseTag: null,
+      createdAt: "2026-07-16T12:00:00.000Z",
+      completedAt: null
+    }],
+    classes: [{
+      id: "artificer",
+      title: "Artificer",
+      description: "Crafts features and interfaces.",
+      affinityTypes: ["feat", "style"],
+      skillTitles: [{ level: 1, title: "Workshop Initiate", description: "Begin the path." }],
+      selected: true,
+      classXp: 320,
+      classLevel: 2,
+      nextSkillAt: 500,
+      unlockedSkills: [{ level: 1, title: "Workshop Initiate", description: "Begin the path." }]
+    }],
+    sharePreview: [
+      "Aetherelic · Level 4 Code Explorer",
+      "Workshop Initiate · 670 XP",
+      "3 day streak · 21 commits",
+      "2 campaigns · 1 release · 3 badges",
+      "Privacy-safe by default: no paths or commit subjects."
+    ],
     rewardModal: null,
     notice: "Journey refreshed · 1 new commit · 0 new releases · +55 activity XP",
     warnings: [],
@@ -112,7 +175,7 @@ function populatedModel(): TuiModel {
 describe("interactive dashboard rendering", () => {
   it("renders every screen within the requested terminal bounds", () => {
     const model = populatedModel();
-    const screens: TuiScreen[] = ["home", "quests", "campaigns", "achievements", "progress", "log", "themes"];
+    const screens: TuiScreen[] = ["home", "quests", "campaigns", "chapters", "achievements", "progress", "path", "log", "share", "themes"];
 
     for (const screen of screens) {
       const state = { ...initialTuiState(), screen };
@@ -319,6 +382,21 @@ describe("interactive dashboard rendering", () => {
     expect(campaign).toContain("N Add");
     expect(campaign).toContain("S Scan");
     expect(campaign).toContain("/ Commands");
+  });
+
+  it("renders chapters, developer paths, and privacy-safe sharing screens", () => {
+    const model = populatedModel();
+    const chapters = renderTui(model, { ...initialTuiState(), screen: "chapters" }, { width: 132, height: 36 }, { color: false });
+    expect(chapters).toContain("Face the First Boss");
+    expect(chapters).toContain("Boss Encounters");
+
+    const pathOutput = renderTui(model, { ...initialTuiState(), screen: "path" }, { width: 132, height: 36 }, { color: false });
+    expect(pathOutput).toContain("Artificer");
+    expect(pathOutput).toContain("Skill Path");
+
+    const share = renderTui(model, { ...initialTuiState(), screen: "share" }, { width: 132, height: 36 }, { color: false });
+    expect(share).toContain("PRIVACY SHIELD");
+    expect(share).toContain("Repository paths excluded");
   });
 
   it("shows a safe resize message in undersized terminals", () => {
