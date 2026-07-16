@@ -85,6 +85,8 @@ describe("TUI keyboard mapping", () => {
     ["l", undefined, "right"],
     ["r", undefined, "refresh"],
     ["t", undefined, "themes"],
+    ["m", undefined, "motion"],
+    ["v", undefined, "color"],
     ["/", undefined, "palette"],
     ["n", undefined, "new"],
     ["e", undefined, "edit"],
@@ -163,6 +165,8 @@ describe("TUI navigation", () => {
     state = transitionTui(state, "down", data).state;
     expect(state.selected.themes).toBe(1);
     expect(transitionTui(state, "enter", data).effect).toBe("apply-theme");
+    expect(transitionTui(state, "motion", data).effect).toBe("toggle-motion");
+    expect(transitionTui(state, "color", data).effect).toBe("cycle-color");
   });
 
   it("emits refresh and quit effects", () => {

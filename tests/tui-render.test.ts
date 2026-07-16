@@ -221,6 +221,19 @@ describe("interactive dashboard rendering", () => {
     expect(output).toContain("Tokyo Night");
     expect(output).toContain("ACTIVE");
     expect(output).toContain("This theme is currently saved.");
+
+    const accessible = renderTui(
+      populatedModel(),
+      state,
+      { width: 120, height: 32 },
+      { color: false, motion: "reduced", colorMode: "never" }
+    );
+    expect(accessible).toContain("Motion");
+    expect(accessible).toContain("reduced");
+    expect(accessible).toContain("Colour");
+    expect(accessible).toContain("never");
+    expect(accessible).toContain("M Motion");
+    expect(accessible).toContain("V Colour");
   });
 
 

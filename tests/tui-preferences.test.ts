@@ -2,8 +2,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadTuiPreferences, saveTuiPreferences } from "../src/tui/preferences.js";
-import { DEFAULT_THEME_ID } from "../src/tui/theme.js";
+import {
+  DEFAULT_TUI_PREFERENCES,
+  loadTuiPreferences,
+  saveTuiPreferences,
+  shouldUseColor
+} from "../src/tui/preferences.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -19,25 +23,33 @@ afterEach(() => {
   }
 });
 
-describe("TUI theme preferences", () => {
-  it("uses Tokyo Night when settings are missing or invalid", () => {
+describe("TUI preferences", () => {
+  it("uses stable defaults when settings are missing or invalid", () => {
     const missing = settingsPath();
-    expect(loadTuiPreferences(missing).theme).toBe(DEFAULT_THEME_ID);
+    expect(loadTuiPreferences(missing)).toEqual(DEFAULT_TUI_PREFERENCES);
 
     fs.mkdirSync(path.dirname(missing), { recursive: true });
-    fs.writeFileSync(missing, '{"theme":"not-a-theme"}\n');
-    expect(loadTuiPreferences(missing).theme).toBe(DEFAULT_THEME_ID);
+    fs.writeFileSync(missing, '{"theme":"not-a-theme","motion":"fast","color":"rainbow"}\n');
+    expect(loadTuiPreferences(missing)).toEqual(DEFAULT_TUI_PREFERENCES);
 
     fs.writeFileSync(missing, "not json");
-    expect(loadTuiPreferences(missing).theme).toBe(DEFAULT_THEME_ID);
+    expect(loadTuiPreferences(missing)).toEqual(DEFAULT_TUI_PREFERENCES);
   });
 
-  it("persists a selected theme atomically", () => {
+  it("persists theme, motion, and colour atomically", () => {
     const file = settingsPath();
-    saveTuiPreferences({ theme: "arcane" }, file);
+    const preferences = { theme: "arcane", motion: "reduced", color: "never" } as const;
+    saveTuiPreferences(preferences, file);
 
-    expect(loadTuiPreferences(file)).toEqual({ theme: "arcane" });
-    expect(JSON.parse(fs.readFileSync(file, "utf8"))).toEqual({ theme: "arcane" });
+    expect(loadTuiPreferences(file)).toEqual(preferences);
+    expect(JSON.parse(fs.readFileSync(file, "utf8"))).toEqual(preferences);
     expect(fs.readdirSync(path.dirname(file))).toEqual(["settings.json"]);
+  });
+
+  it("respects explicit colour settings and NO_COLOR", () => {
+    expect(shouldUseColor({ ...DEFAULT_TUI_PREFERENCES, color: "always" }, "1")).toBe(true);
+    expect(shouldUseColor({ ...DEFAULT_TUI_PREFERENCES, color: "never" }, undefined)).toBe(false);
+    expect(shouldUseColor({ ...DEFAULT_TUI_PREFERENCES, color: "auto" }, "1")).toBe(false);
+    expect(shouldUseColor({ ...DEFAULT_TUI_PREFERENCES, color: "auto" }, undefined)).toBe(true);
   });
 });
