@@ -1,27 +1,11 @@
 <div align="center">
-
-<pre>
-█████ █████ █   █ █   █ █████ █████ █████ █   █ █████ █████ █████
-█████ █████ █   █ █   █ █████ █████ █████ █   █ █████ █████ █████
-█     █   █ ██ ██ ██ ██   █     █   █   █ █   █ █     █       █
-█     █   █ ██ ██ ██ ██   █     █   █   █ █   █ █     █       █
-█     █   █ █ █ █ █ █ █   █     █   █   █ █   █ ████  █████   █
-█     █   █ █ █ █ █ █ █   █     █   █   █ █   █ ████  █████   █
-█     █   █ █ █ █ █ █ █   █     █   █   █ █   █ ████  █████   █
-█     █   █ █   █ █   █   █     █   █  ██ █   █ █         █   █
-█     █   █ █   █ █   █   █     █   █  ██ █   █ █         █   █
-█████ █████ █   █ █   █ █████   █   █████ █████ █████ █████   █
-█████ █████ █   █ █   █ █████   █   █████ █████ █████ █████   █
-
-                       COMMITQUEST v1.1.1
-</pre>
-
+  
 </div>  
 # ⚔️ CommitQuest
 
-### Turn real Git progress into a private developer adventure.
+### Turn real Git progress into a fun, interactive collectathon adventure.
 
-CommitQuest is a local-first terminal RPG that transforms commits, releases and project milestones into **XP, quests, streaks, badges, chapters and boss encounters**.
+CommitQuest is a local hosted terminal RPG that transforms commits, releases and project milestones into **XP, quests, streaks, badges, chapters and boss encounters**.
 
 [![Release](https://img.shields.io/github/v/release/Aetherelic/commitquest?style=flat-square&logo=github&label=release&color=cba6f7)](https://github.com/Aetherelic/commitquest/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/Aetherelic/commitquest/ci.yml?branch=main&style=flat-square&logo=githubactions&label=tests)](https://github.com/Aetherelic/commitquest/actions/workflows/ci.yml)
@@ -214,10 +198,8 @@ cq backup
 
 <div align="center">
 
-Built with TypeScript, SQLite and an unreasonable appreciation for beautiful terminals.
-
 [Documentation](docs) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [MIT License](LICENSE)
 
-**Made with &lt;3 by [Aetherelic](https://github.com/Aetherelic)**
+**Made with <3 by [Aetherelic](https://github.com/Aetherelic)**
 
 </div>
