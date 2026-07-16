@@ -21,6 +21,7 @@ import {
 import { loadTuiPreferences, saveTuiPreferences } from "./preferences.js";
 import { renderTui } from "./render.js";
 import { getTuiTheme, TUI_THEMES, type TuiTheme } from "./theme.js";
+import { writeCrashReport } from "../core/crash.js";
 import type {
   TerminalSize,
   TuiActionId,
@@ -218,7 +219,7 @@ export async function launchTui(streams: TuiStreams = {}): Promise<void> {
 
   const executeAction = (action: TuiActionId): void => {
     try {
-      if (action === "refresh-all" || action === "campaign-scan") {
+      if (action === "refresh-all" || action === "campaign-scan" || action === "class-choose" || action === "share-export") {
         const result = executeImmediateAction(action, model, state);
         reload(result.scan === undefined ? { notice: result.notice } : { scan: result.scan, notice: result.notice });
         state = { ...state, overlay: null, modalOpen: Boolean(model.rewardModal) };
@@ -373,7 +374,8 @@ export async function launchTui(streams: TuiStreams = {}): Promise<void> {
     const onFatal = (error: unknown): void => {
       cleanup();
       const message = error instanceof Error ? error.stack ?? error.message : String(error);
-      process.stderr.write(`\nCommitQuest TUI failed: ${message}\n`);
+      const report = writeCrashReport(error, { screen: state.screen, overlay: state.overlay?.kind ?? null });
+      process.stderr.write(`\nCommitQuest TUI failed: ${message}\nCrash report: ${report}\n`);
       process.exitCode = 1;
     };
     const onResize = (): void => draw();
@@ -399,6 +401,8 @@ export async function launchTui(streams: TuiStreams = {}): Promise<void> {
         executeAction(campaign?.archived ? "campaign-restore" : "campaign-archive");
       }
       if (effect === "campaign-remove") executeAction("campaign-remove");
+      if (effect === "class-choose") executeAction("class-choose");
+      if (effect === "share-export") executeAction("share-export");
     };
 
     const onKeypress = (sequence: string, key: Key): void => {

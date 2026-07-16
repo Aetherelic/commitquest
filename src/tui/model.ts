@@ -1,6 +1,7 @@
 import {
   databaseStats,
   getMeta,
+  listBossBattles,
   listRepositories,
   openDatabase,
   setMeta,
@@ -13,6 +14,9 @@ import { calculateStreak } from "../core/streak.js";
 import { isQuestRewarded, syncQuestRewards } from "../core/quests.js";
 import { achievementStates, syncAchievements } from "../core/achievements.js";
 import { syncCustomQuestRewards } from "../core/custom-quests.js";
+import { syncCampaignChapters } from "../core/chapters.js";
+import { playerClassStates } from "../core/classes.js";
+import { buildPublicJourney } from "../core/share.js";
 import { scanRepositories, type ScanSummary } from "../core/scan.js";
 import type {
   TuiActivity,
@@ -273,6 +277,10 @@ export function loadTuiModel(options: LoadOptions = {}): TuiModel {
     const quests = syncQuestRewards(db, now);
     const customQuests = syncCustomQuestRewards(db, now);
     syncAchievements(db, now);
+    const repositories = listRepositories(db);
+    const chapters = syncCampaignChapters(db, repositories, now);
+    const classes = playerClassStates(db);
+    const publicJourney = buildPublicJourney(db, { now });
     const seenThrough = now.toISOString();
     const pendingRewardModal = rewardModal(rewardEventsSince(db, baseline), seenThrough);
     if (!existingCursor && !pendingRewardModal) setMeta(db, REWARD_CURSOR_KEY, seenThrough);
@@ -303,6 +311,16 @@ export function loadTuiModel(options: LoadOptions = {}): TuiModel {
       recentActivity: recentActivity(db),
       commitTypes: commitTypeStats(db),
       dailyXp: dailyXp(db),
+      chapters,
+      bossBattles: listBossBattles(db),
+      classes,
+      sharePreview: [
+        `${publicJourney.name} · Level ${publicJourney.level} ${publicJourney.title}`,
+        `${publicJourney.classTitle} · ${publicJourney.totalXp} XP`,
+        `${publicJourney.streak} day streak · ${publicJourney.commits} commits`,
+        `${publicJourney.campaigns} campaigns · ${publicJourney.releases} releases · ${publicJourney.achievements} badges`,
+        "Privacy-safe by default: no paths or commit subjects."
+      ],
       rewardModal: pendingRewardModal,
       notice: scanNotice(scanResult.summary),
       warnings: scanResult.warnings,

@@ -28,3 +28,15 @@ export function getDatabasePath(): string {
 export function getSettingsPath(): string {
   return path.join(getConfigDirectory(), "settings.json");
 }
+
+export function getBackupDirectory(): string {
+  return path.join(getDataDirectory(), "backups");
+}
+
+export function getCrashDirectory(): string {
+  return path.join(getDataDirectory(), "crash-reports");
+}
+
+export function getShareDirectory(): string {
+  return path.join(getDataDirectory(), "shares");
+}

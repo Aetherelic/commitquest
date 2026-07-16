@@ -1,9 +1,9 @@
-import type { AchievementState, CustomQuestObjective, CustomQuestState, Quest, RepositoryRecord } from "../core/types.js";
+import type { AchievementState, BossBattleRecord, ChapterState, CustomQuestObjective, CustomQuestState, PlayerClassState, Quest, RepositoryRecord } from "../core/types.js";
 import type { LevelProgress } from "../core/levels.js";
 import type { Profile } from "../core/profile.js";
 import type { StreakResult } from "../core/streak.js";
 
-export type TuiScreen = "home" | "quests" | "campaigns" | "achievements" | "progress" | "log" | "themes";
+export type TuiScreen = "home" | "quests" | "campaigns" | "chapters" | "achievements" | "progress" | "path" | "log" | "share" | "themes";
 
 export interface TuiCampaign extends RepositoryRecord {
   commits: number;
@@ -61,6 +61,10 @@ export interface TuiModel {
   recentActivity: TuiActivity[];
   commitTypes: TuiCommitTypeStat[];
   dailyXp: TuiDailyXp[];
+  chapters: ChapterState[];
+  bossBattles: BossBattleRecord[];
+  classes: PlayerClassState[];
+  sharePreview: string[];
   rewardModal: TuiRewardModal | null;
   notice: string | null;
   warnings: string[];
@@ -72,9 +76,12 @@ export type TuiActionId =
   | "open-home"
   | "open-quests"
   | "open-campaigns"
+  | "open-chapters"
   | "open-achievements"
   | "open-progress"
+  | "open-path"
   | "open-log"
+  | "open-share"
   | "open-themes"
   | "show-detail"
   | "refresh-all"
@@ -88,6 +95,8 @@ export type TuiActionId =
   | "campaign-archive"
   | "campaign-restore"
   | "campaign-remove"
+  | "class-choose"
+  | "share-export"
   | "onboarding-begin"
   | "onboarding-skip-campaign";
 

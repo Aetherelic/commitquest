@@ -7,6 +7,7 @@ import {
   resolveRepositoryPath
 } from "../git/git.js";
 import { failure, success } from "../ui/render.js";
+import { ensureDefaultChapters } from "../core/chapters.js";
 
 export interface AddOptions {
   name?: string;
@@ -32,6 +33,8 @@ export function addCommand(inputPath: string, options: AddOptions): void {
     path: repositoryPath,
     defaultBranch: getDefaultBranch(repositoryPath)
   });
+
+  ensureDefaultChapters(db, repository);
 
   console.log(success(`Campaign added: ${chalk.bold(repository.name)}`));
   console.log(chalk.dim(`  ${repository.path}`));

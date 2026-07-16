@@ -4,6 +4,7 @@ import { customQuestObjectiveLabel } from "../core/custom-quests.js";
 import { HOME_MENU } from "./navigation.js";
 import { filteredPaletteEntries } from "./actions.js";
 import { getTuiTheme, TUI_THEMES, type TuiTheme } from "./theme.js";
+import { APP_VERSION as VERSION } from "../version.js";
 import type {
   TerminalSize,
   TuiActivity,
@@ -19,7 +20,7 @@ const ANSI_PATTERN = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const FOOTER_CREDIT = "Made with <3 by Aetherelic";
 const MIN_WIDTH = 68;
 const MIN_HEIGHT = 20;
-const APP_VERSION = "v0.2.0";
+const APP_VERSION = `v${VERSION}`;
 
 interface RenderOptions {
   color?: boolean;
@@ -557,6 +558,196 @@ function campaignsBody(model: TuiModel, state: TuiState, width: number, height: 
     .map((text) => ({ text }));
 }
 
+
+function chaptersBody(model: TuiModel, state: TuiState, width: number, height: number): Line[] {
+  if (model.chapters.length === 0) {
+    return panelFill("Campaign Chapters", [
+      "No chapters are available yet.",
+      "Add a campaign or refresh your journey to generate its story arc."
+    ], width, height).map((text) => ({ text }));
+  }
+  const selected = Math.max(0, Math.min(state.selected.chapters, model.chapters.length - 1));
+  const current = model.chapters[selected]!;
+  const repositoryChapters = model.chapters.filter((chapter) => chapter.repositoryId === current.repositoryId);
+  const completed = repositoryChapters.filter((chapter) => chapter.status === "complete").length;
+  const battles = model.bossBattles.filter((battle) => battle.repositoryId === current.repositoryId);
+
+  if (width < 108) {
+    const leftWidth = Math.max(34, Math.floor(width * 0.43));
+    const rightWidth = width - leftWidth - 2;
+    const { rows } = listRows(model.chapters.map((chapter) => ({
+      label: `${chapter.repositoryName} · ${chapter.title}`,
+      meta: `${chapter.progress}/${chapter.target}`,
+      complete: chapter.status === "complete"
+    })), selected, Math.max(5, height - 2));
+    return columns(
+      panelFill("Chapter Navigator", rows, leftWidth, height),
+      panelFill("Selected Chapter", [
+        `${current.status === "complete" ? "◆" : current.status === "active" ? "◇" : "·"} ${current.title}`,
+        current.repositoryName,
+        "",
+        current.description,
+        "",
+        progressBar(current.progress, current.target, Math.max(12, rightWidth - 4)),
+        `${current.progress}/${current.target} · +${current.rewardXp} XP`,
+        `Status: ${current.status}`
+      ], rightWidth, height),
+      leftWidth,
+      rightWidth
+    ).map((text) => ({ text }));
+  }
+
+  const gap = 2;
+  const usable = width - gap * 2;
+  const leftWidth = Math.floor(usable * 0.34);
+  const middleWidth = Math.floor(usable * 0.39);
+  const rightWidth = usable - leftWidth - middleWidth;
+  const { rows } = listRows(model.chapters.map((chapter) => ({
+    label: `${chapter.repositoryName} · ${chapter.title}`,
+    meta: chapter.status.toUpperCase(),
+    complete: chapter.status === "complete"
+  })), selected, Math.max(6, height - 5));
+  const left = panelFill("Chapter Navigator", [
+    `${completed}/${repositoryChapters.length} chapters complete`,
+    progressBar(completed, Math.max(1, repositoryChapters.length), Math.max(12, leftWidth - 4)),
+    "",
+    ...rows
+  ], leftWidth, height);
+  const middle = panelFill("Current Chapter", [
+    current.status === "complete" ? "◆ CHAPTER COMPLETE" : current.status === "active" ? "◇ ACTIVE CHAPTER" : "· LOCKED CHAPTER",
+    `Chapter ${current.position} · ${current.title}`,
+    current.repositoryName,
+    "",
+    current.description,
+    "",
+    progressBar(current.progress, current.target, Math.max(14, middleWidth - 4)),
+    `${current.progress}/${current.target} progress`,
+    `Reward: +${current.rewardXp} XP`,
+    "",
+    current.status === "locked"
+      ? "Complete the earlier chapter to unlock this objective."
+      : current.objectiveType === "release"
+        ? "Use cq boss begin <campaign> <version> to prepare the encounter."
+        : "Eligible Git activity advances this chapter automatically."
+  ], middleWidth, height);
+  const bossLines = battles.length > 0
+    ? battles.slice(0, 7).flatMap((battle) => [
+        `${battle.status === "complete" ? "◆" : "◇"} v${battle.version} · ${battle.status}`,
+        `  ${battle.releaseTag ?? "release tag pending"}`,
+        ""
+      ])
+    : ["No boss encounter prepared.", "", `cq boss begin ${current.repositoryName} <version>`];
+  const right = stackPanels([
+    panelFill("Campaign Arc", repositoryChapters.map((chapter) =>
+      `${chapter.status === "complete" ? "◆" : chapter.status === "active" ? ">" : "·"} ${chapter.position}. ${clip(chapter.title, rightWidth - 8)}`
+    ), rightWidth, Math.max(8, Math.floor(height * 0.53))),
+    panelFill("Boss Encounters", bossLines, rightWidth, Math.max(7, height - Math.max(8, Math.floor(height * 0.53)) - 1))
+  ]);
+  return mergeColumns([left, middle, right], [leftWidth, middleWidth, rightWidth], gap)
+    .slice(0, height)
+    .map((text) => ({ text }));
+}
+
+function pathBody(model: TuiModel, state: TuiState, width: number, height: number): Line[] {
+  const selected = Math.max(0, Math.min(state.selected.path, Math.max(0, model.classes.length - 1)));
+  const current = model.classes[selected];
+  if (!current) return panelFill("Developer Paths", ["No class definitions found."], width, height).map((text) => ({ text }));
+  const leftWidth = Math.max(30, Math.floor(width * 0.31));
+  const middleWidth = Math.max(36, Math.floor(width * 0.38));
+  const rightWidth = width - leftWidth - middleWidth - 4;
+  const { rows } = listRows(model.classes.map((entry) => ({
+    label: entry.title,
+    meta: `Lv ${entry.classLevel} · ${entry.classXp} XP`,
+    complete: entry.selected
+  })), selected, Math.max(5, height - 4));
+  const left = panelFill("Choose Your Path", [
+    "Classes change quests and cosmetic titles only.",
+    "They never multiply XP or lock features.",
+    "",
+    ...rows,
+    "",
+    "Enter selects the highlighted path."
+  ], leftWidth, height);
+  const middle = panelFill("Path Profile", [
+    current.selected ? "◆ CURRENT PATH" : "◇ AVAILABLE PATH",
+    current.title,
+    `Class level ${current.classLevel} · ${current.classXp} XP`,
+    "",
+    current.description,
+    "",
+    `Affinity: ${current.affinityTypes.join(" · ")}`,
+    "",
+    current.nextSkillAt === null
+      ? "All path titles unlocked."
+      : `${current.nextSkillAt - current.classXp} class XP to the next title.`,
+    "",
+    progressBar(current.classXp, current.nextSkillAt ?? Math.max(1, current.classXp), Math.max(14, middleWidth - 4))
+  ], middleWidth, height);
+  const skillLines = current.skillTitles.flatMap((skill) => {
+    const unlocked = skill.level <= current.classLevel;
+    return [
+      `${unlocked ? "◆" : "◇"} ${skill.title}`,
+      `  Level ${skill.level} · ${skill.description}`,
+      ""
+    ];
+  });
+  const right = panelFill("Skill Path", skillLines, rightWidth, height);
+  return mergeColumns([left, middle, right], [leftWidth, middleWidth, rightWidth], 2)
+    .slice(0, height)
+    .map((text) => ({ text }));
+}
+
+function shareBody(model: TuiModel, state: TuiState, width: number, height: number): Line[] {
+  const formats = [
+    { label: "SVG Journey Card", meta: "visual card", extension: ".svg" },
+    { label: "Markdown Profile", meta: "README ready", extension: ".md" },
+    { label: "JSON Journey", meta: "portable data", extension: ".json" }
+  ];
+  const selected = Math.max(0, Math.min(state.selected.share, formats.length - 1));
+  const current = formats[selected]!;
+  const leftWidth = Math.max(28, Math.floor(width * 0.28));
+  const middleWidth = Math.max(42, Math.floor(width * 0.43));
+  const rightWidth = width - leftWidth - middleWidth - 4;
+  const { rows } = listRows(formats.map((format) => ({
+    label: format.label,
+    meta: format.meta
+  })), selected, 5);
+  const left = panelFill("Export Format", [
+    ...rows,
+    "",
+    "Enter exports the selected format.",
+    "Files are written to your local CommitQuest share directory."
+  ], leftWidth, height);
+  const middle = panelFill("Journey Preview", [
+    ...model.sharePreview,
+    "",
+    sectionTitle("Privacy Shield", Math.max(12, middleWidth - 4)),
+    "◆ Repository paths excluded",
+    "◆ Commit subjects excluded",
+    "◆ Email address excluded",
+    "◆ Project names hidden unless explicitly requested",
+    "",
+    "Share cards are generated entirely on your machine."
+  ], middleWidth, height);
+  const right = panelFill("Ready To Share", [
+    current.label,
+    current.extension,
+    "",
+    "Default output:",
+    `~/.local/share/commitquest/shares/commitquest-journey${current.extension}`,
+    "",
+    "Press Enter to export.",
+    "",
+    "CLI options",
+    "cq share --format svg",
+    "cq share --format markdown",
+    "cq share --include-projects"
+  ], rightWidth, height);
+  return mergeColumns([left, middle, right], [leftWidth, middleWidth, rightWidth], 2)
+    .slice(0, height)
+    .map((text) => ({ text }));
+}
+
 function achievementsBody(model: TuiModel, state: TuiState, width: number, height: number): Line[] {
   const safeSelected = Math.max(0, Math.min(state.selected.achievements, Math.max(0, model.achievements.length - 1)));
   const current = model.achievements[safeSelected];
@@ -858,9 +1049,12 @@ function screenTitle(state: TuiState): string {
     case "home": return "Home";
     case "quests": return "Quest Board";
     case "campaigns": return "Campaigns";
+    case "chapters": return "Campaign Chapters";
     case "achievements": return "Achievements";
     case "progress": return "Progress";
+    case "path": return "Developer Path";
     case "log": return "Adventure Log";
+    case "share": return "Share Journey";
     case "themes": return "Themes";
   }
 }
@@ -870,9 +1064,12 @@ function screenTabs(state: TuiState, width: number): string {
     ["home", "HOME"],
     ["quests", "QUESTS"],
     ["campaigns", "CAMPAIGNS"],
+    ["chapters", "CHAPTERS"],
     ["achievements", "BADGES"],
     ["progress", "PROGRESS"],
+    ["path", "PATH"],
     ["log", "LOG"],
+    ["share", "SHARE"],
     ["themes", "THEMES"]
   ];
   const value = entries.map(([screen, label]) => screen === state.screen ? `[ ${label} ]` : `  ${label}  `).join(" ");
@@ -934,9 +1131,12 @@ function bodyLines(model: TuiModel, state: TuiState, width: number, height: numb
     case "home": return homeBody(model, state, width, height, pulse);
     case "quests": return renderQuestColumns(model, state, width, height).map((text) => ({ text }));
     case "campaigns": return campaignsBody(model, state, width, height);
+    case "chapters": return chaptersBody(model, state, width, height);
     case "achievements": return achievementsBody(model, state, width, height);
     case "progress": return progressBody(model, width, height);
+    case "path": return pathBody(model, state, width, height);
     case "log": return logBody(model, state, width, height);
+    case "share": return shareBody(model, state, width, height);
     case "themes": return themesBody(state, width, height, activeTheme);
   }
 }
@@ -1072,6 +1272,31 @@ function detailOverlayContent(model: TuiModel, state: TuiState): { title: string
         "Campaign controls",
         "N add · S scan · P repair · X archive/restore · D remove",
         "Esc or Enter returns to the campaign hub."
+      ]
+    };
+  }
+  if (state.screen === "chapters") {
+    const chapter = model.chapters[state.selected.chapters];
+    if (!chapter) return { title: "Chapter Detail", lines: ["No chapter selected."] };
+    const battles = model.bossBattles.filter((battle) => battle.repositoryId === chapter.repositoryId);
+    return {
+      title: chapter.title,
+      lines: [
+        chapter.status === "complete" ? "◆ CHAPTER COMPLETE" : chapter.status === "active" ? "◇ ACTIVE CHAPTER" : "· LOCKED CHAPTER",
+        `${chapter.repositoryName} · Chapter ${chapter.position}`,
+        "",
+        chapter.description,
+        "",
+        progressBar(chapter.progress, chapter.target, 52),
+        `${chapter.progress}/${chapter.target} progress`,
+        `Reward: +${chapter.rewardXp} XP`,
+        `Status: ${chapter.status}`,
+        "",
+        "Boss encounters",
+        ...(battles.length ? battles.map((battle) => `${battle.status === "complete" ? "◆" : "◇"} v${battle.version} · ${battle.status}`) : ["No release encounter prepared."]),
+        "",
+        `Prepare one with: cq boss begin ${chapter.repositoryName} <version>`,
+        "Esc or Enter returns to the chapter map."
       ]
     };
   }
@@ -1217,6 +1442,9 @@ function footerControls(state: TuiState): string {
   if (state.overlay) return "Enter Confirm/Open  Esc Back";
   if (state.screen === "quests") return "↑↓ Move  N New  E Edit  C Complete  A Abandon  Enter Detail  / Commands  Q Quit";
   if (state.screen === "campaigns") return "↑↓ Move  N Add  S Scan  P Repair  X Archive  D Remove  Enter Detail  / Commands  Q Quit";
+  if (state.screen === "path") return "↑↓ Select  Enter Choose Path  ←→ Screens  / Commands  Q Quit";
+  if (state.screen === "share") return "↑↓ Format  Enter Export  ←→ Screens  / Commands  Q Quit";
+  if (state.screen === "chapters") return "↑↓ Chapters  Enter Detail  ←→ Screens  / Commands  Q Quit";
   if (state.screen === "themes") return "↑↓ Preview  Enter Save  Esc Cancel  / Commands  Q Quit";
   return "↑↓ Move  ←→ Screens  Enter Open  R Refresh  / Commands  T Themes  ? Help  Q Quit";
 }

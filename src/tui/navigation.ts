@@ -5,9 +5,12 @@ export const SCREEN_ORDER: TuiScreen[] = [
   "home",
   "quests",
   "campaigns",
+  "chapters",
   "achievements",
   "progress",
+  "path",
   "log",
+  "share",
   "themes"
 ];
 
@@ -20,9 +23,12 @@ export const HOME_MENU: Array<{
 }> = [
   { screen: "quests", command: "/quests", title: "Quest Board", description: "active objectives and rewards", shortcut: "enter" },
   { screen: "campaigns", command: "/campaigns", title: "Campaigns", description: "tracked repositories", shortcut: "enter" },
+  { screen: "chapters", command: "/chapters", title: "Chapters", description: "campaign arcs and boss encounters", shortcut: "enter" },
   { screen: "achievements", command: "/badges", title: "Achievements", description: "unlocked and hidden badges", shortcut: "enter" },
   { screen: "progress", command: "/progress", title: "Progress", description: "levels, streaks, and activity", shortcut: "enter" },
+  { screen: "path", command: "/path", title: "Developer Path", description: "classes and cosmetic skills", shortcut: "enter" },
   { screen: "log", command: "/log", title: "Adventure Log", description: "recent Git rewards", shortcut: "enter" },
+  { screen: "share", command: "/share", title: "Share Journey", description: "privacy-safe cards and profiles", shortcut: "enter" },
   { screen: "themes", command: "/themes", title: "Themes", description: "change the look of CommitQuest", shortcut: "T" }
 ];
 
@@ -68,6 +74,8 @@ export type TuiEffect =
   | "campaign-repair"
   | "campaign-archive-toggle"
   | "campaign-remove"
+  | "class-choose"
+  | "share-export"
   | "quit";
 
 export interface TuiTransition {
@@ -86,9 +94,12 @@ export function initialTuiState(
     selected: {
       quests: 0,
       campaigns: 0,
+      chapters: 0,
       achievements: 0,
       progress: 0,
+      path: 0,
       log: 0,
+      share: 0,
       themes: themeIndex(activeTheme)
     },
     helpOpen: false,
@@ -107,9 +118,12 @@ export function itemCount(screen: TuiScreen, model: TuiModel): number {
     case "home": return HOME_MENU.length;
     case "quests": return model.quests.length + model.customQuests.length;
     case "campaigns": return model.campaigns.length;
+    case "chapters": return model.chapters?.length ?? 0;
     case "achievements": return model.achievements.length;
     case "progress": return Math.max(1, model.commitTypes.length);
+    case "path": return model.classes?.length ?? 0;
     case "log": return model.recentActivity.length;
+    case "share": return 3;
     case "themes": return TUI_THEMES.length;
   }
 }
@@ -176,6 +190,8 @@ export function transitionTui(state: TuiState, key: TuiKey, model: TuiModel): Tu
     return { state: { ...state, screen: HOME_MENU[state.homeIndex]?.screen ?? "quests" }, effect: "none" };
   }
   if (key === "enter" && state.screen === "themes") return { state, effect: "apply-theme" };
+  if (key === "enter" && state.screen === "path") return { state, effect: "class-choose" };
+  if (key === "enter" && state.screen === "share") return { state, effect: "share-export" };
   if (key === "enter" && state.screen !== "progress") return { state, effect: "open-detail" };
 
   if (key === "new" && state.screen === "quests") return { state, effect: "quest-create" };

@@ -13,6 +13,13 @@ import { achievementsCommand } from "./commands/achievements.js";
 import { profileCommand } from "./commands/profile.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { dashboardCommand } from "./commands/dashboard.js";
+import { backupCreateCommand, backupListCommand, backupRestoreCommand } from "./commands/backup.js";
+import { verboseVersionCommand } from "./commands/version.js";
+import { chaptersListCommand } from "./commands/chapters.js";
+import { bossBeginCommand, bossCompleteCommand, bossStatusCommand } from "./commands/boss.js";
+import { CLASS_IDS, classChooseCommand, classListCommand } from "./commands/classes.js";
+import { SHARE_FORMATS, shareCommand } from "./commands/share.js";
+import { APP_VERSION } from "./version.js";
 import { hookStatusCommand, installHookCommand, removeHookCommand } from "./commands/hook.js";
 import {
   abandonCustomQuestCommand,
@@ -29,7 +36,7 @@ const program = new Command();
 program
   .name("commitquest")
   .description("Turn real Git progress into a private developer adventure.")
-  .version("0.2.0")
+  .version(APP_VERSION)
   .showHelpAfterError();
 
 program
@@ -165,9 +172,44 @@ program
   .description("Open the interactive CommitQuest game")
   .action(dashboardCommand);
 
+const backup = program
+  .command("backup")
+  .description("Create, list, and restore local backups");
+backup.command("create").description("Create a verified backup").action(backupCreateCommand);
+backup.command("list").description("List available backups").action(backupListCommand);
+backup.command("restore <backup>").description("Restore a backup by ID or use latest").option("--yes", "confirm replacement of current data").action(backupRestoreCommand);
+backup.action(backupCreateCommand);
+
+program
+  .command("version")
+  .description("Show detailed runtime and installation information")
+  .option("--verbose", "show full diagnostics")
+  .action(verboseVersionCommand);
+
+program
+  .command("chapters")
+  .description("Show campaign chapters and progress")
+  .option("--repo <name-or-path>", "filter by campaign")
+  .action(chaptersListCommand);
+
+const boss = program.command("boss").description("Prepare and complete release boss encounters");
+boss.command("begin <repo> <version>").option("--test-command <command>", "override detected test command").action(bossBeginCommand);
+boss.command("status <repo> <version>").option("--run-tests", "run the configured test suite").option("--test-command <command>", "override detected test command").action(bossStatusCommand);
+boss.command("complete <repo> <version>").option("--create-tag", "create an annotated local Git tag").option("--no-tests", "skip test execution").option("--test-command <command>", "override detected test command").action(bossCompleteCommand);
+
+const developerClass = program.command("class").description("Choose and inspect developer paths");
+developerClass.command("list").description("List class progression").action(classListCommand);
+developerClass.command("choose <class>").description(`Select a cosmetic developer path (${CLASS_IDS.join(", ")})`).action((classId: string) => classChooseCommand(classId));
+developerClass.action(classListCommand);
+
+const share = program.command("share").description("Export a privacy-safe journey card");
+share.addOption(new Option("--format <format>").choices(SHARE_FORMATS).default("svg"));
+share.option("--output <path>", "output path").option("--name <name>", "public display name").option("--include-projects", "include campaign names; paths and commit subjects remain hidden").action(shareCommand);
+
 program
   .command("doctor")
   .description("Check CommitQuest, Git, profile, and campaign health")
+  .option("--repair", "create a safety backup and repair safe local issues")
   .action(doctorCommand);
 
 program.action(dashboardCommand);

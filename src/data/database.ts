@@ -1,14 +1,22 @@
 import fs from "node:fs";
+import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { getDataDirectory, getDatabasePath } from "./paths.js";
-import type { CustomQuestObjective, CustomQuestRecord, GitCommit, RepositoryRecord } from "../core/types.js";
+import { getBackupDirectory, getDataDirectory, getDatabasePath } from "./paths.js";
+import type {
+  BossBattleRecord,
+  ChapterObjective,
+  ChapterRecord,
+  CustomQuestObjective,
+  CustomQuestRecord,
+  GitCommit,
+  RepositoryRecord
+} from "../core/types.js";
 
 export type CommitQuestDatabase = DatabaseSync;
 
-const SCHEMA = `
-PRAGMA foreign_keys = ON;
-PRAGMA journal_mode = WAL;
+export const DATABASE_SCHEMA_VERSION = 5;
 
+const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -88,13 +96,78 @@ CREATE TABLE IF NOT EXISTS custom_quests (
 
 CREATE INDEX IF NOT EXISTS custom_quests_status_idx
   ON custom_quests(completed_at, abandoned_at, deadline_at);
+
+CREATE TABLE IF NOT EXISTS chapters (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  repository_id INTEGER NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+  chapter_key TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  objective_type TEXT NOT NULL,
+  target INTEGER NOT NULL,
+  reward_xp INTEGER NOT NULL DEFAULT 0,
+  baseline_count INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  completed_at TEXT,
+  UNIQUE(repository_id, chapter_key)
+);
+
+CREATE INDEX IF NOT EXISTS chapters_repository_idx
+  ON chapters(repository_id, position);
+
+CREATE TABLE IF NOT EXISTS boss_battles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  repository_id INTEGER NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+  version TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'preparing',
+  test_command TEXT,
+  release_tag TEXT,
+  created_at TEXT NOT NULL,
+  completed_at TEXT,
+  UNIQUE(repository_id, version)
+);
+
+CREATE INDEX IF NOT EXISTS boss_battles_repository_idx
+  ON boss_battles(repository_id, created_at DESC);
 `;
+
+function safeTimestamp(): string {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+function backupBeforeMigration(fromVersion: number): string | null {
+  const databasePath = getDatabasePath();
+  if (!fs.existsSync(databasePath)) return null;
+  const directory = path.join(getBackupDirectory(), `pre-migration-v${fromVersion}-to-v${DATABASE_SCHEMA_VERSION}-${safeTimestamp()}`);
+  fs.mkdirSync(directory, { recursive: true });
+  const files: string[] = [];
+  for (const suffix of ["", "-wal", "-shm"]) {
+    const source = `${databasePath}${suffix}`;
+    if (fs.existsSync(source)) {
+      const filename = path.basename(source);
+      fs.copyFileSync(source, path.join(directory, filename));
+      files.push(filename);
+    }
+  }
+  const id = path.basename(directory);
+  fs.writeFileSync(path.join(directory, "manifest.json"), `${JSON.stringify({
+    id,
+    kind: "pre-migration",
+    createdAt: new Date().toISOString(),
+    appVersion: "unknown",
+    databaseIntegrity: "not-run",
+    files,
+    fromVersion,
+    toVersion: DATABASE_SCHEMA_VERSION
+  }, null, 2)}\n`, { mode: 0o600 });
+  return directory;
+}
 
 function hasColumn(db: CommitQuestDatabase, table: "repositories" | "commits" | "tags", column: string): boolean {
   const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
   return rows.some((row) => row.name === column);
 }
-
 
 function migrateRepositoryArchive(db: CommitQuestDatabase): void {
   if (!hasColumn(db, "repositories", "archived")) {
@@ -157,14 +230,43 @@ function reconcileQuestEligibilityPrecision(db: CommitQuestDatabase): void {
     .run(migrationKey, new Date().toISOString());
 }
 
+function validateDatabase(db: CommitQuestDatabase): void {
+  const integrity = db.prepare("PRAGMA integrity_check").get() as Record<string, unknown>;
+  const result = String(Object.values(integrity)[0] ?? "");
+  if (result !== "ok") throw new Error(`Database integrity check failed: ${result}`);
+}
+
 export function openDatabase(): CommitQuestDatabase {
   fs.mkdirSync(getDataDirectory(), { recursive: true });
-  const db = new DatabaseSync(getDatabasePath());
-  db.exec(SCHEMA);
-  migrateRepositoryArchive(db);
-  migrateQuestEligibility(db);
-  reconcileQuestEligibilityPrecision(db);
-  return db;
+  const databasePath = getDatabasePath();
+  let currentVersion = 0;
+  if (fs.existsSync(databasePath)) {
+    const probe = new DatabaseSync(databasePath);
+    try {
+      currentVersion = Number((probe.prepare("PRAGMA user_version").get() as { user_version?: number }).user_version ?? 0);
+    } finally {
+      probe.close();
+    }
+  }
+  if (currentVersion < DATABASE_SCHEMA_VERSION && fs.existsSync(databasePath)) backupBeforeMigration(currentVersion);
+
+  const db = new DatabaseSync(databasePath);
+  try {
+    db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;");
+    db.exec("BEGIN IMMEDIATE");
+    db.exec(SCHEMA);
+    migrateRepositoryArchive(db);
+    migrateQuestEligibility(db);
+    reconcileQuestEligibilityPrecision(db);
+    db.exec(`PRAGMA user_version = ${DATABASE_SCHEMA_VERSION}`);
+    db.exec("COMMIT");
+    validateDatabase(db);
+    return db;
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch { /* no active transaction */ }
+    db.close();
+    throw error;
+  }
 }
 
 export function getMeta(db: CommitQuestDatabase, key: string): string | null {
@@ -536,4 +638,200 @@ export function abandonCustomQuest(db: CommitQuestDatabase, id: number, abandone
     WHERE id = ? AND completed_at IS NULL AND abandoned_at IS NULL
   `).run(abandonedAt, id);
   return result.changes > 0;
+}
+
+function mapChapter(row: Record<string, unknown>): ChapterRecord {
+  return {
+    id: Number(row.id),
+    repositoryId: Number(row.repositoryId),
+    repositoryName: String(row.repositoryName),
+    key: String(row.key),
+    title: String(row.title),
+    description: String(row.description),
+    position: Number(row.position),
+    objectiveType: String(row.objectiveType) as ChapterObjective,
+    target: Number(row.target),
+    rewardXp: Number(row.rewardXp),
+    baselineCount: Number(row.baselineCount),
+    createdAt: String(row.createdAt),
+    completedAt: row.completedAt === null ? null : String(row.completedAt)
+  };
+}
+
+const CHAPTER_SELECT = `
+  SELECT
+    c.id,
+    c.repository_id AS repositoryId,
+    r.name AS repositoryName,
+    c.chapter_key AS key,
+    c.title,
+    c.description,
+    c.position,
+    c.objective_type AS objectiveType,
+    c.target,
+    c.reward_xp AS rewardXp,
+    c.baseline_count AS baselineCount,
+    c.created_at AS createdAt,
+    c.completed_at AS completedAt
+  FROM chapters c
+  JOIN repositories r ON r.id = c.repository_id
+`;
+
+export function listChapters(db: CommitQuestDatabase, repositoryId?: number): ChapterRecord[] {
+  const rows = repositoryId === undefined
+    ? db.prepare(`${CHAPTER_SELECT} ORDER BY r.name COLLATE NOCASE, c.position`).all()
+    : db.prepare(`${CHAPTER_SELECT} WHERE c.repository_id = ? ORDER BY c.position`).all(repositoryId);
+  return (rows as Array<Record<string, unknown>>).map(mapChapter);
+}
+
+export function getChapter(db: CommitQuestDatabase, id: number): ChapterRecord | null {
+  const row = db.prepare(`${CHAPTER_SELECT} WHERE c.id = ?`).get(id) as Record<string, unknown> | undefined;
+  return row ? mapChapter(row) : null;
+}
+
+export function createChapter(
+  db: CommitQuestDatabase,
+  input: {
+    repositoryId: number;
+    key: string;
+    title: string;
+    description: string;
+    position: number;
+    objectiveType: ChapterObjective;
+    target: number;
+    rewardXp: number;
+    baselineCount: number;
+  }
+): ChapterRecord {
+  const now = new Date().toISOString();
+  db.prepare(`
+    INSERT INTO chapters(
+      repository_id, chapter_key, title, description, position,
+      objective_type, target, reward_xp, baseline_count, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(repository_id, chapter_key) DO UPDATE SET
+      title = excluded.title,
+      description = excluded.description,
+      position = excluded.position,
+      objective_type = excluded.objective_type,
+      target = excluded.target,
+      reward_xp = excluded.reward_xp
+  `).run(
+    input.repositoryId,
+    input.key,
+    input.title,
+    input.description,
+    input.position,
+    input.objectiveType,
+    input.target,
+    input.rewardXp,
+    input.baselineCount,
+    now
+  );
+  const row = db.prepare(`${CHAPTER_SELECT} WHERE c.repository_id = ? AND c.chapter_key = ?`)
+    .get(input.repositoryId, input.key) as Record<string, unknown>;
+  return mapChapter(row);
+}
+
+export function markChapterCompleted(db: CommitQuestDatabase, id: number, completedAt: string): boolean {
+  const result = db.prepare(`
+    UPDATE chapters SET completed_at = ?
+    WHERE id = ? AND completed_at IS NULL
+  `).run(completedAt, id);
+  return result.changes > 0;
+}
+
+export function chapterActivityCount(
+  db: CommitQuestDatabase,
+  repositoryId: number,
+  objectiveType: ChapterObjective
+): number {
+  if (objectiveType === "manual") return 0;
+  if (objectiveType === "commit") {
+    return Number((db.prepare("SELECT COUNT(*) AS count FROM commits WHERE repository_id = ?").get(repositoryId) as { count: number }).count);
+  }
+  if (objectiveType === "release") {
+    return Number((db.prepare("SELECT COUNT(*) AS count FROM tags WHERE repository_id = ?").get(repositoryId) as { count: number }).count);
+  }
+  const row = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM custom_quests q
+    WHERE q.repository_id = ? AND q.completed_at IS NOT NULL
+  `).get(repositoryId) as { count: number };
+  return Number(row.count);
+}
+
+function mapBossBattle(row: Record<string, unknown>): BossBattleRecord {
+  return {
+    id: Number(row.id),
+    repositoryId: Number(row.repositoryId),
+    repositoryName: String(row.repositoryName),
+    version: String(row.version),
+    status: String(row.status) as BossBattleRecord["status"],
+    testCommand: row.testCommand === null ? null : String(row.testCommand),
+    releaseTag: row.releaseTag === null ? null : String(row.releaseTag),
+    createdAt: String(row.createdAt),
+    completedAt: row.completedAt === null ? null : String(row.completedAt)
+  };
+}
+
+const BOSS_SELECT = `
+  SELECT
+    b.id,
+    b.repository_id AS repositoryId,
+    r.name AS repositoryName,
+    b.version,
+    b.status,
+    b.test_command AS testCommand,
+    b.release_tag AS releaseTag,
+    b.created_at AS createdAt,
+    b.completed_at AS completedAt
+  FROM boss_battles b
+  JOIN repositories r ON r.id = b.repository_id
+`;
+
+export function listBossBattles(db: CommitQuestDatabase, repositoryId?: number): BossBattleRecord[] {
+  const rows = repositoryId === undefined
+    ? db.prepare(`${BOSS_SELECT} ORDER BY b.created_at DESC`).all()
+    : db.prepare(`${BOSS_SELECT} WHERE b.repository_id = ? ORDER BY b.created_at DESC`).all(repositoryId);
+  return (rows as Array<Record<string, unknown>>).map(mapBossBattle);
+}
+
+export function getBossBattle(db: CommitQuestDatabase, repositoryId: number, version: string): BossBattleRecord | null {
+  const row = db.prepare(`${BOSS_SELECT} WHERE b.repository_id = ? AND b.version = ?`)
+    .get(repositoryId, version) as Record<string, unknown> | undefined;
+  return row ? mapBossBattle(row) : null;
+}
+
+export function createBossBattle(
+  db: CommitQuestDatabase,
+  input: { repositoryId: number; version: string; testCommand: string | null }
+): BossBattleRecord {
+  const now = new Date().toISOString();
+  db.prepare(`
+    INSERT INTO boss_battles(repository_id, version, status, test_command, created_at)
+    VALUES (?, ?, 'preparing', ?, ?)
+    ON CONFLICT(repository_id, version) DO UPDATE SET
+      test_command = COALESCE(excluded.test_command, boss_battles.test_command)
+  `).run(input.repositoryId, input.version, input.testCommand, now);
+  return getBossBattle(db, input.repositoryId, input.version)!;
+}
+
+export function updateBossBattle(
+  db: CommitQuestDatabase,
+  id: number,
+  input: { status?: BossBattleRecord["status"]; releaseTag?: string | null; completedAt?: string | null }
+): void {
+  if (input.status !== undefined) db.prepare("UPDATE boss_battles SET status = ? WHERE id = ?").run(input.status, id);
+  if (input.releaseTag !== undefined) db.prepare("UPDATE boss_battles SET release_tag = ? WHERE id = ?").run(input.releaseTag, id);
+  if (input.completedAt !== undefined) db.prepare("UPDATE boss_battles SET completed_at = ? WHERE id = ?").run(input.completedAt, id);
+}
+
+export function databaseIntegrity(db: CommitQuestDatabase): string {
+  const row = db.prepare("PRAGMA integrity_check").get() as Record<string, unknown>;
+  return String(Object.values(row)[0] ?? "unknown");
+}
+
+export function checkpointDatabase(db: CommitQuestDatabase): void {
+  db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
 }

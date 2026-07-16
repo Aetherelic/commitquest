@@ -25,6 +25,9 @@ import {
 } from "../git/git.js";
 import { installPostCommitHook } from "../git/hooks.js";
 import { TUI_THEMES } from "./theme.js";
+import { ensureDefaultChapters } from "../core/chapters.js";
+import { choosePlayerClass } from "../core/classes.js";
+import { writeJourneyShare } from "../core/share.js";
 import type {
   TuiActionId,
   TuiCampaign,
@@ -199,6 +202,7 @@ export function availablePaletteEntries(model: TuiModel, state: TuiState): TuiPa
     { id: "quest-complete", label: "Complete Manual Quest", description: "Claim an active manual objective", shortcut: "C", enabled: Boolean(quest && quest.status === "active" && quest.objectiveType === "manual") },
     { id: "quest-abandon", label: "Abandon Selected Quest", description: "Stop tracking an active custom quest", shortcut: "A", enabled: Boolean(quest && quest.status === "active") },
     { id: "open-campaigns", label: "Open Campaigns", description: "Browse tracked repositories", enabled: true },
+    { id: "open-chapters", label: "Open Chapters", description: "Review campaign arcs and boss encounters", enabled: true },
     { id: "campaign-add", label: "Add Campaign", description: "Track another local Git repository", shortcut: "N", enabled: true },
     { id: "campaign-scan", label: "Scan Selected Campaign", description: "Import new Git activity", shortcut: "S", enabled: Boolean(campaign && !campaign.archived) },
     { id: "campaign-repair", label: "Repair Campaign Path", description: "Reconnect a moved repository", shortcut: "P", enabled: Boolean(campaign) },
@@ -207,7 +211,11 @@ export function availablePaletteEntries(model: TuiModel, state: TuiState): TuiPa
     { id: "refresh-all", label: "Refresh All Campaigns", description: "Scan every active campaign", shortcut: "R", enabled: true },
     { id: "open-achievements", label: "Open Badges", description: "Browse achievement progress", enabled: true },
     { id: "open-progress", label: "Open Progress", description: "View XP, streaks, and charts", enabled: true },
+    { id: "open-path", label: "Open Developer Path", description: "Choose a class and view cosmetic skills", enabled: true },
+    { id: "class-choose", label: "Choose Highlighted Path", description: "Set the selected cosmetic class", shortcut: "Enter", enabled: state.screen === "path" && model.classes.length > 0 },
     { id: "open-log", label: "Open Adventure Log", description: "Review recent rewards", enabled: true },
+    { id: "open-share", label: "Open Share Journey", description: "Preview privacy-safe exports", enabled: true },
+    { id: "share-export", label: "Export Highlighted Journey Card", description: "Write the selected format locally", shortcut: "Enter", enabled: state.screen === "share" },
     { id: "open-themes", label: "Open Themes", description: "Preview and save a palette", shortcut: "T", enabled: true },
     { id: "show-detail", label: "Open Full Detail", description: "Expand the selected item", shortcut: "Enter", enabled: state.screen !== "home" && state.screen !== "themes" && state.screen !== "progress" }
   ];
@@ -227,12 +235,15 @@ export function openTuiAction(state: TuiState, action: TuiActionId, model: TuiMo
     case "open-home": return { ...state, screen: "home", overlay: null };
     case "open-quests": return { ...state, screen: "quests", overlay: null };
     case "open-campaigns": return { ...state, screen: "campaigns", overlay: null };
+    case "open-chapters": return { ...state, screen: "chapters", overlay: null };
     case "open-achievements": return { ...state, screen: "achievements", overlay: null };
     case "open-progress": return { ...state, screen: "progress", overlay: null };
+    case "open-path": return { ...state, screen: "path", overlay: null };
     case "open-log": return { ...state, screen: "log", overlay: null };
+    case "open-share": return { ...state, screen: "share", overlay: null };
     case "open-themes": return { ...state, screen: "themes", overlay: null };
     case "show-detail":
-      if (state.screen === "home" || state.screen === "themes") return state;
+      if (state.screen === "home" || state.screen === "themes" || state.screen === "path" || state.screen === "share") return state;
       return { ...state, overlay: { kind: "detail", screen: state.screen } };
     case "quest-create": return { ...state, overlay: questForm(model) };
     case "quest-edit": return quest && quest.status === "active" ? { ...state, overlay: questForm(model, quest) } : state;
@@ -259,6 +270,8 @@ export function openTuiAction(state: TuiState, action: TuiActionId, model: TuiMo
         { dangerous: true, verification: campaign.name }
       ) } : state;
     case "campaign-scan":
+    case "class-choose":
+    case "share-export":
     case "refresh-all":
     case "onboarding-begin":
     case "onboarding-skip-campaign":
@@ -353,6 +366,7 @@ export function executeFormOverlay(form: TuiFormOverlay, model: TuiModel): TuiEx
         path: root,
         defaultBranch: getDefaultBranch(root)
       });
+      ensureDefaultChapters(db, repository);
       if (fieldValue(form.fields, "liveRewards") !== "false") {
         installPostCommitHook(root, { nodePath: process.execPath, cliPath: installedCliPath() });
       }
@@ -440,6 +454,28 @@ export function executeImmediateAction(action: TuiActionId, model: TuiModel, sta
     try {
       const summary = scanRepositories(db, [campaign], model.profile.email);
       return { notice: `${campaign.name} scanned · ${summary.importedCommits} commits · ${summary.importedTags} releases · +${summary.earnedXp} XP` };
+    } finally {
+      db.close();
+    }
+  }
+  if (action === "class-choose") {
+    const selected = model.classes[state.selected.path];
+    if (!selected) throw new Error("Select a developer path first.");
+    const db = openDatabase();
+    try {
+      choosePlayerClass(db, selected.id);
+      return { notice: `Developer path selected · ${selected.title}` };
+    } finally {
+      db.close();
+    }
+  }
+  if (action === "share-export") {
+    const formats = ["svg", "markdown", "json"] as const;
+    const format = formats[state.selected.share] ?? "svg";
+    const db = openDatabase();
+    try {
+      const destination = writeJourneyShare(db, format);
+      return { notice: `Journey exported · ${destination}` };
     } finally {
       db.close();
     }
