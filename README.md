@@ -45,9 +45,75 @@ CommitQuest watches the Git repositories you choose and rewards genuine developm
 </table>
 
 <details>
-<summary><strong>Theme browser — Matrix preview</strong></summary>
+<summary><strong>Theme gallery — preview all 16 palettes</strong></summary>
 <br>
-<img src="assets/preview-themes.png" alt="CommitQuest Matrix theme browser" width="100%">
+<p>Every preview is rendered from CommitQuest itself. Selection, success, attention and critical states stay inside that theme’s own palette.</p>
+<table>
+  <tr>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-tokyo-night.png" alt="CommitQuest Tokyo Night theme preview"></td>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-arcane.png" alt="CommitQuest Arcane theme preview"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Tokyo Night</strong></td>
+    <td align="center"><strong>Arcane</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-catppuccin.png" alt="CommitQuest Catppuccin Mocha theme preview"></td>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-everforest.png" alt="CommitQuest Everforest theme preview"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Catppuccin Mocha</strong></td>
+    <td align="center"><strong>Everforest</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-matrix.png" alt="CommitQuest Matrix theme preview"></td>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-nord.png" alt="CommitQuest Nord theme preview"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Matrix</strong></td>
+    <td align="center"><strong>Nord</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-rose-pine.png" alt="CommitQuest Rosé Pine theme preview"></td>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-gruvbox-dark.png" alt="CommitQuest Gruvbox Dark theme preview"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Rosé Pine</strong></td>
+    <td align="center"><strong>Gruvbox Dark</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-dracula.png" alt="CommitQuest Dracula theme preview"></td>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-solarized-dark.png" alt="CommitQuest Solarized Dark theme preview"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Dracula</strong></td>
+    <td align="center"><strong>Solarized Dark</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-monochrome.png" alt="CommitQuest Monochrome theme preview"></td>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-obsidian-ink.png" alt="CommitQuest Obsidian Ink theme preview"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Monochrome</strong></td>
+    <td align="center"><strong>Obsidian Ink</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-synthwave.png" alt="CommitQuest Synthwave theme preview"></td>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-amber-terminal.png" alt="CommitQuest Amber Terminal theme preview"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Synthwave</strong></td>
+    <td align="center"><strong>Amber Terminal</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-iceberg.png" alt="CommitQuest Iceberg theme preview"></td>
+    <td width="50%"><img src="assets/theme-previews/preview-theme-cyberdeck.png" alt="CommitQuest Cyberdeck theme preview"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Iceberg</strong></td>
+    <td align="center"><strong>Cyberdeck</strong></td>
+  </tr>
+</table>
 </details>
 
 ## ✦ Install
