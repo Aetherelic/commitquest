@@ -77,6 +77,7 @@ function populatedModel(): TuiModel {
       defaultBranch: "main",
       addedAt: "2026-07-16T10:00:00.000Z",
       lastScannedAt: "2026-07-16T12:00:00.000Z",
+      archived: false,
       commits: 6,
       releases: 0,
       earnedXp: 390,
@@ -103,7 +104,8 @@ function populatedModel(): TuiModel {
     rewardModal: null,
     notice: "Journey refreshed · 1 new commit · 0 new releases · +55 activity XP",
     warnings: [],
-    refreshedAt: "2026-07-16T12:00:00.000Z"
+    refreshedAt: "2026-07-16T12:00:00.000Z",
+    onboardingRequired: false
   };
 }
 
@@ -228,6 +230,95 @@ describe("interactive dashboard rendering", () => {
     expect(progressOutput).toContain("Level Progress");
     expect(progressOutput).toContain("14-Day XP Trend");
     expect(progressOutput).toContain("Journey Milestones");
+  });
+
+  it("renders the searchable command palette, forms, confirmations, and onboarding", () => {
+    const model = populatedModel();
+    const palette = stripAnsi(renderTui(
+      model,
+      { ...initialTuiState(), overlay: { kind: "palette", query: "quest", selected: 0 } },
+      { width: 120, height: 36 },
+      { color: false }
+    ));
+    expect(palette).toContain("Command Palette");
+    expect(palette).toContain("Create Quest");
+
+    const form = stripAnsi(renderTui(
+      model,
+      {
+        ...initialTuiState(),
+        overlay: {
+          kind: "form",
+          title: "Create New Quest",
+          action: "quest-create",
+          fields: [
+            { key: "title", label: "Title", kind: "text", value: "Stable actions" },
+            { key: "objectiveType", label: "Objective", kind: "choice", value: "feat", choices: [{ label: "feat", value: "feat" }] }
+          ],
+          fieldIndex: 0,
+          error: null,
+          submitLabel: "Create Quest",
+          cancelLabel: "Cancel"
+        }
+      },
+      { width: 120, height: 36 },
+      { color: false }
+    ));
+    expect(form).toContain("Create New Quest");
+    expect(form).toContain("Stable actions");
+
+    const confirm = stripAnsi(renderTui(
+      model,
+      {
+        ...initialTuiState(),
+        overlay: {
+          kind: "confirm",
+          title: "Remove Campaign",
+          message: ["Tracking data will be removed."],
+          action: "campaign-remove",
+          confirmLabel: "Remove",
+          dangerous: true,
+          verification: "commitquest",
+          typed: "commit",
+          error: null
+        }
+      },
+      { width: 120, height: 36 },
+      { color: false }
+    ));
+    expect(confirm).toContain("Remove Campaign");
+    expect(confirm).toContain("commitquest");
+
+    const onboarding = stripAnsi(renderTui(
+      model,
+      initialTuiState("tokyo-night", false, true),
+      { width: 120, height: 36 },
+      { color: false }
+    ));
+    expect(onboarding).toContain("WELCOME TO COMMITQUEST");
+    expect(onboarding).toContain("Everything remains local");
+  });
+
+  it("renders full detail views and screen-specific action hints", () => {
+    const model = populatedModel();
+    const questDetail = stripAnsi(renderTui(
+      model,
+      { ...initialTuiState(), screen: "quests", overlay: { kind: "detail", screen: "quests" } },
+      { width: 130, height: 38 },
+      { color: false }
+    ));
+    expect(questDetail).toContain("Quest controls");
+    expect(questDetail).toContain("N create · E edit");
+
+    const campaign = stripAnsi(renderTui(
+      model,
+      { ...initialTuiState(), screen: "campaigns" },
+      { width: 130, height: 38 },
+      { color: false }
+    ));
+    expect(campaign).toContain("N Add");
+    expect(campaign).toContain("S Scan");
+    expect(campaign).toContain("/ Commands");
   });
 
   it("shows a safe resize message in undersized terminals", () => {

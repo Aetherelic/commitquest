@@ -50,6 +50,7 @@ function model(): TuiModel {
       defaultBranch: "main",
       addedAt: "2026-07-16T10:00:00.000Z",
       lastScannedAt: "2026-07-16T12:00:00.000Z",
+      archived: false,
       commits: 5,
       releases: 0,
       earnedXp: 220,
@@ -66,9 +67,11 @@ function model(): TuiModel {
     }],
     commitTypes: [{ type: "feat", count: 3, xp: 150 }],
     dailyXp: [{ date: "2026-07-16", xp: 220 }],
+    rewardModal: null,
     notice: null,
     warnings: [],
-    refreshedAt: "2026-07-16T12:00:00.000Z"
+    refreshedAt: "2026-07-16T12:00:00.000Z",
+    onboardingRequired: false
   };
 }
 
@@ -82,6 +85,15 @@ describe("TUI keyboard mapping", () => {
     ["l", undefined, "right"],
     ["r", undefined, "refresh"],
     ["t", undefined, "themes"],
+    ["/", undefined, "palette"],
+    ["n", undefined, "new"],
+    ["e", undefined, "edit"],
+    ["c", undefined, "complete"],
+    ["a", undefined, "abandon"],
+    ["s", undefined, "scan"],
+    ["p", undefined, "repair"],
+    ["x", undefined, "archive"],
+    ["d", undefined, "remove"],
     ["?", undefined, "help"],
     ["q", undefined, "quit"],
     ["", key("up"), "up"],
@@ -158,5 +170,48 @@ describe("TUI navigation", () => {
     const state = initialTuiState();
     expect(transitionTui(state, "refresh", data).effect).toBe("refresh");
     expect(transitionTui(state, "quit", data).effect).toBe("quit");
+  });
+
+  it("emits contextual action effects and opens onboarding safely", () => {
+    const data = model();
+    const questState = { ...initialTuiState(), screen: "quests" as const };
+    expect(transitionTui(questState, "new", data).effect).toBe("quest-create");
+    expect(transitionTui(questState, "edit", data).effect).toBe("quest-edit");
+    expect(transitionTui(questState, "complete", data).effect).toBe("quest-complete");
+    expect(transitionTui(questState, "abandon", data).effect).toBe("quest-abandon");
+
+    const campaignState = { ...initialTuiState(), screen: "campaigns" as const };
+    expect(transitionTui(campaignState, "new", data).effect).toBe("campaign-add");
+    expect(transitionTui(campaignState, "scan", data).effect).toBe("campaign-scan");
+    expect(transitionTui(campaignState, "repair", data).effect).toBe("campaign-repair");
+    expect(transitionTui(campaignState, "archive", data).effect).toBe("campaign-archive-toggle");
+    expect(transitionTui(campaignState, "remove", data).effect).toBe("campaign-remove");
+
+    expect(transitionTui(initialTuiState(), "palette", data).effect).toBe("open-palette");
+    expect(initialTuiState("tokyo-night", false, true).overlay).toEqual({ kind: "onboarding", step: "welcome" });
+  });
+
+  it("traps base navigation while an interactive overlay is open", () => {
+    const data = model();
+    const state = { ...initialTuiState(), overlay: { kind: "palette" as const, query: "", selected: 0 } };
+    const result = transitionTui(state, "down", data);
+    expect(result.state).toBe(state);
+    expect(result.effect).toBe("none");
+  });
+
+  it("traps input inside reward modals and dismisses them safely", () => {
+    const data = model();
+    let state = initialTuiState("tokyo-night", true);
+    const homeIndex = state.homeIndex;
+    state = transitionTui(state, "down", data).state;
+    expect(state.homeIndex).toBe(homeIndex);
+    expect(state.modalOpen).toBe(true);
+
+    const dismissal = transitionTui(state, "enter", data);
+    expect(dismissal.effect).toBe("ack-rewards");
+    state = dismissal.state;
+    expect(state.modalOpen).toBe(false);
+    state = transitionTui(state, "down", data).state;
+    expect(state.homeIndex).toBe(homeIndex + 1);
   });
 });

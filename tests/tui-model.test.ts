@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
-import { addRepository, insertCommit, openDatabase } from "../src/data/database.js";
+import { addRepository, insertCommit, openDatabase, setMeta, setRepositoryArchived } from "../src/data/database.js";
 import { updateProfile } from "../src/core/profile.js";
 import { acknowledgeTuiRewards, loadTuiModel } from "../src/tui/model.js";
 
@@ -33,6 +34,31 @@ describe("TUI model", () => {
     expect(model.campaigns).toEqual([]);
     expect(model.recentActivity).toEqual([]);
     expect(model.quests.length).toBeGreaterThan(0);
+    expect(model.onboardingRequired).toBe(true);
+  });
+
+  it("skips archived campaigns during automatic scans and remembers completed onboarding", () => {
+    const home = useTemporaryHome();
+    const repositoryPath = path.join(home, "archived-project");
+    fs.mkdirSync(repositoryPath);
+    execFileSync("git", ["init", "-b", "main"], { cwd: repositoryPath, stdio: "ignore" });
+    execFileSync("git", ["config", "user.name", "Aetherelic"], { cwd: repositoryPath });
+    execFileSync("git", ["config", "user.email", "developer@example.com"], { cwd: repositoryPath });
+    fs.writeFileSync(path.join(repositoryPath, "README.md"), "# Archived\n");
+    execFileSync("git", ["add", "."], { cwd: repositoryPath });
+    execFileSync("git", ["commit", "-m", "feat: archived work"], { cwd: repositoryPath, stdio: "ignore" });
+
+    const db = openDatabase();
+    updateProfile(db, { name: "Aetherelic", email: "developer@example.com" });
+    const repository = addRepository(db, { name: "archived", path: repositoryPath, defaultBranch: "main" });
+    setRepositoryArchived(db, repository.id, true);
+    setMeta(db, "tui.onboarding-complete-v1", "true");
+    db.close();
+
+    const model = loadTuiModel({ scan: true, now: new Date("2026-07-16T12:00:00.000Z") });
+    expect(model.stats.commits).toBe(0);
+    expect(model.campaigns[0]?.archived).toBe(true);
+    expect(model.onboardingRequired).toBe(false);
   });
 
   it("builds campaign, progress, quest, badge, and log data from SQLite", () => {
