@@ -1,6 +1,6 @@
 {
   "name": "commitquest",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Turn real Git progress into a private developer adventure.",
   "type": "module",
   "bin": {

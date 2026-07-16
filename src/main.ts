@@ -29,7 +29,7 @@ const program = new Command();
 program
   .name("commitquest")
   .description("Turn real Git progress into a private developer adventure.")
-  .version("0.1.2")
+  .version("0.2.0")
   .showHelpAfterError();
 
 program
