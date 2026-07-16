@@ -236,6 +236,24 @@ describe("interactive dashboard rendering", () => {
     expect(accessible).toContain("V Colour");
   });
 
+  it("shows a compact palette preview beside every theme", () => {
+    const state = { ...initialTuiState("tokyo-night"), screen: "themes" as const };
+    const output = stripAnsi(renderTui(
+      populatedModel(),
+      state,
+      { width: 150, height: 48 },
+      { color: false }
+    ));
+    const themeNames = [
+      "Tokyo Night", "Arcane", "Catppuccin Mocha", "Everforest", "Matrix", "Nord",
+      "Rosé Pine", "Gruvbox Dark", "Dracula", "Solarized Dark", "Monochrome",
+      "Obsidian Ink", "Synthwave", "Amber Terminal", "Iceberg", "Cyberdeck"
+    ];
+    for (const name of themeNames) expect(output).toContain(name);
+    expect((output.match(/■/g) ?? []).length).toBeGreaterThanOrEqual(themeNames.length * 6);
+    expect(output).toContain("FULL PALETTE");
+  });
+
 
   it("renders the clean launcher and animated focus states", () => {
     const model = populatedModel();

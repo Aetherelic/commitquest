@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Key } from "node:readline";
-import { keyFromPress, shouldUseInteractiveTui } from "../src/tui/app.js";
+import { keyFromPress, previewThemeForState, shouldUseInteractiveTui } from "../src/tui/app.js";
 import {
   HOME_MENU,
   initialTuiState,
   transitionTui
 } from "../src/tui/navigation.js";
+import { onboardingThemeForm } from "../src/tui/actions.js";
+import { getTuiTheme } from "../src/tui/theme.js";
 import type { TuiModel } from "../src/tui/types.js";
 
 function model(): TuiModel {
@@ -109,6 +111,17 @@ describe("TUI keyboard mapping", () => {
     ["", key("c", { ctrl: true }), "quit"]
   ] as const)("maps %s/%s to %s", (sequence, inputKey, expected) => {
     expect(keyFromPress(sequence, inputKey)).toBe(expected);
+  });
+
+
+  it("live-previews the selected onboarding theme without saving it", () => {
+    const fallback = getTuiTheme("tokyo-night");
+    const form = onboardingThemeForm(fallback.id);
+    form.fields[0] = { ...form.fields[0]!, value: "matrix" };
+    const state = { ...initialTuiState(fallback.id), overlay: form };
+
+    expect(previewThemeForState(state, fallback).id).toBe("matrix");
+    expect(previewThemeForState({ ...state, overlay: null }, fallback).id).toBe("tokyo-night");
   });
 
   it("only enables the full-screen app in a usable TTY", () => {

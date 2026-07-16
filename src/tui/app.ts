@@ -99,6 +99,12 @@ function selectedTheme(state: TuiState, fallback: TuiTheme): TuiTheme {
   return TUI_THEMES[state.selected.themes] ?? fallback;
 }
 
+export function previewThemeForState(state: TuiState, fallback: TuiTheme): TuiTheme {
+  if (state.overlay?.kind !== "form" || state.overlay.action !== "onboarding-theme") return fallback;
+  const selected = state.overlay.fields.find((field) => field.key === "theme")?.value;
+  return getTuiTheme(selected ?? fallback.id);
+}
+
 function wrap(value: number, count: number): number {
   if (count <= 0) return 0;
   return ((value % count) + count) % count;
@@ -161,9 +167,10 @@ export async function launchTui(streams: TuiStreams = {}): Promise<void> {
   readline.emitKeypressEvents(input);
 
   const draw = (): void => {
+    const renderTheme = previewThemeForState(state, theme);
     output.write(`${CLEAR_SCREEN}${renderTui(model, state, terminalSize(output), {
       color: shouldUseColor(preferences),
-      theme,
+      theme: renderTheme,
       pulse,
       motion: preferences.motion,
       colorMode: preferences.color

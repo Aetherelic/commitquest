@@ -13,7 +13,7 @@
         in
           pkgs.buildNpmPackage {
             pname = "commitquest";
-            version = "1.1.0";
+            version = "1.1.1";
             src = self;
 
             nodejs = pkgs.nodejs_24;

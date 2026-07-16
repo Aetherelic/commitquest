@@ -36,6 +36,8 @@ interface Segment {
   text: string;
   tone?: Tone | undefined;
   background?: Background | undefined;
+  foregroundHex?: string | undefined;
+  backgroundHex?: string | undefined;
   bold?: boolean | undefined;
 }
 
@@ -136,9 +138,13 @@ function styleText(
   theme: TuiTheme,
   tone: Tone,
   backgroundTone: Background,
-  bold = false
+  bold = false,
+  foregroundHex?: string,
+  backgroundHex?: string
 ): string {
-  let styler = chalk.bgHex(background(theme, backgroundTone)).hex(foreground(theme, tone));
+  let styler = chalk
+    .bgHex(backgroundHex ?? background(theme, backgroundTone))
+    .hex(foregroundHex ?? foreground(theme, tone));
   if (bold || tone === "title" || tone === "selected") styler = styler.bold;
   return styler(value);
 }
@@ -215,7 +221,9 @@ function renderLine(line: Line, width: number, theme: TuiTheme, color: boolean):
     theme,
     segment.tone ?? line.tone ?? "normal",
     segment.background ?? lineBackground,
-    segment.bold ?? false
+    segment.bold ?? false,
+    segment.foregroundHex,
+    segment.backgroundHex
   )).join("");
 }
 
@@ -225,6 +233,14 @@ function part(text: string, tone: Tone = "normal", bold = false, backgroundTone?
     tone,
     bold,
     ...(backgroundTone === undefined ? {} : { background: backgroundTone })
+  };
+}
+
+function palettePart(text: string, foregroundHex: string, backgroundHex?: string): Segment {
+  return {
+    text,
+    foregroundHex,
+    ...(backgroundHex === undefined ? {} : { backgroundHex })
   };
 }
 
@@ -1107,6 +1123,47 @@ function shareBody(model: TuiModel, state: TuiState, width: number, height: numb
   ].slice(0, height);
 }
 
+
+function themePaletteSegments(theme: TuiTheme): Segment[] {
+  const colours = [
+    theme.accent,
+    theme.accentAlt,
+    theme.success,
+    theme.warning,
+    theme.danger,
+    theme.text
+  ];
+  return colours.flatMap((colour, index) => [
+    palettePart("■", colour),
+    ...(index < colours.length - 1 ? [part(" ", "muted")] : [])
+  ]);
+}
+
+function themeLibraryItem(
+  theme: TuiTheme,
+  width: number,
+  selected: boolean,
+  active: boolean
+): Line {
+  const swatchWidth = 11;
+  const status = active ? "SAVED" : selected ? "PREVIEW" : "";
+  const statusWidth = width >= 42 ? 8 : 0;
+  const nameWidth = Math.max(8, width - swatchWidth - statusWidth - 5);
+  const rowBackground: Background = selected ? "surfaceAlt" : "background";
+  return {
+    background: rowBackground,
+    segments: [
+      part(selected ? "◆" : "·", selected ? "accent" : active ? "success" : "muted", true, rowBackground),
+      part(` ${fit(theme.name, nameWidth)}`, selected ? "title" : "normal", selected, rowBackground),
+      ...(statusWidth > 0
+        ? [part(fit(status, statusWidth), active ? "success" : "accentAlt", Boolean(status), rowBackground)]
+        : []),
+      part(" ", "normal", false, rowBackground),
+      ...themePaletteSegments(theme)
+    ]
+  };
+}
+
 function themesBody(
   state: TuiState,
   width: number,
@@ -1130,12 +1187,11 @@ function themesBody(
   const list: Line[] = [
     sectionLine("Theme Library", listWidth, `${state.selected.themes + 1}/${TUI_THEMES.length}`),
     blank(),
-    ...window.items.map((theme, index) => listItem(
-      theme.name,
-      theme.id === activeTheme.id ? "ACTIVE" : "PREVIEW",
+    ...window.items.map((theme, index) => themeLibraryItem(
+      theme,
       listWidth,
       window.offset + index === state.selected.themes,
-      theme.id === activeTheme.id ? "success" : "accentAlt"
+      theme.id === activeTheme.id
     ))
   ];
 
@@ -1144,6 +1200,14 @@ function themesBody(
     blank(),
     { segments: [part(previewTheme.name, "title", true)] },
     { text: previewTheme.description, tone: "muted" },
+    blank(),
+    {
+      segments: [
+        part("FULL PALETTE  ", "muted", true),
+        ...themePaletteSegments(previewTheme),
+        part("  accent · alt · success · attention · critical · text", "muted")
+      ]
+    },
     blank(),
     { segments: [part("● PRIMARY ACCENT   ", "accent", true), part(previewTheme.accent, "muted")] },
     { segments: [part("● SECONDARY LIGHT  ", "accentAlt", true), part(previewTheme.accentAlt, "muted")] },
@@ -1367,11 +1431,26 @@ function formOverlayContent(form: TuiFormOverlay, width: number): string[] {
         : ""
     ];
   });
+  const selectedThemeId = form.action === "onboarding-theme"
+    ? form.fields.find((field) => field.key === "theme")?.value
+    : null;
+  const themePreview = selectedThemeId
+    ? (() => {
+        const selectedTheme = getTuiTheme(selectedThemeId);
+        return [
+          "",
+          `Live preview · ${selectedTheme.description}`,
+          `Primary ${selectedTheme.accent} · Secondary ${selectedTheme.accentAlt}`,
+          `Success ${selectedTheme.success} · Attention ${selectedTheme.warning} · Critical ${selectedTheme.danger}`
+        ];
+      })()
+    : [];
   return [
     "Use Tab or ↑↓ to move between fields.",
     "Use ←→ to change choices. Enter advances or submits.",
     "",
     ...rows,
+    ...themePreview,
     ...(form.error ? ["", `Error: ${form.error}`] : []),
     "",
     `${form.submitLabel}  ·  Esc ${form.cancelLabel}${form.allowSkip ? "  ·  Esc also skips" : ""}`
@@ -1516,9 +1595,10 @@ function applyOverlay(lines: Line[], model: TuiModel, state: TuiState, width: nu
   }
 
   if (overlay.kind === "form") {
+    const previewHeight = overlay.action === "onboarding-theme" ? 4 : 0;
     return overlayPanel(lines, overlay.title, formOverlayContent(overlay, Math.min(84, width - 10) - 4), width, height, {
       modalWidth: Math.min(88, width - 8),
-      modalHeight: Math.min(height - 4, Math.max(13, overlay.fields.filter((field) => !field.secret).length * 2 + 8)),
+      modalHeight: Math.min(height - 4, Math.max(13, overlay.fields.filter((field) => !field.secret).length * 2 + 8 + previewHeight)),
       tone: overlay.error ? "warning" : "normal"
     });
   }

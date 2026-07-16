@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.1 — Palette Gallery
+
+### Added
+
+- Inline five-colour palette previews for every theme in the theme browser
+- Live full-interface palette previews while cycling the onboarding theme selector
+- Theme descriptions and semantic colour values inside the onboarding theme step
+
+### Changed
+
+- Theme rows now communicate each palette before selection instead of relying on names alone
+- The saved theme, current preview, and palette swatches remain visually distinct at every terminal width
+
 ## 1.1.0 — Prism
 
 ### Added
