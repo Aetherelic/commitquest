@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.1.0 — Prism
+
+### Added
+
+- Full-screen Profile card with identity, path title, level, XP, streaks, campaign totals, badges, current objective, and recent momentum
+- Matrix, Nord, Rosé Pine, Gruvbox Dark, Dracula, Solarized Dark, Monochrome, Obsidian Ink, Synthwave, Amber Terminal, Iceberg, and Cyberdeck themes
+- Theme-owned semantic colours for selections, rewards, warnings, failures, metadata, and secondary emphasis
+- Vertical layout distribution that uses tall terminal windows as deliberate breathing room
+
+### Changed
+
+- Redesigned every submenu around section rules, list/detail panes, whitespace, and readable hierarchy
+- Removed bulky box grids from Profile, Quests, Campaigns, Chapters, Badges, Progress, Path, Log, Share, and Themes
+- Preserved the established welcome screen while adding Profile to the launcher, tabs, and command palette
+- Expanded the theme gallery to sixteen curated palettes with live semantic-state previews
+
+### Visual consistency
+
+- Every status colour is sourced from the selected theme; renderers do not inject a global red, green, pink, or highlight
+- Matrix stays within layered phosphor greens, Catppuccin uses its own Mocha state colours, and Monochrome remains grayscale
+- Primary submenu screens are tested to remain free from heavyweight modal borders
+- 25 automated test files and 111 tests cover navigation, layouts, profile rendering, and palette integrity
+
 ## 1.0.0 — The Completed Quest
 
 ### Added

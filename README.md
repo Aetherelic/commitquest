@@ -27,13 +27,14 @@ cq
 CommitQuest opens a full-screen terminal game with a clean launcher and persistent themes.
 
 ```text
-                         COMMITQUEST v1.0.0
+                         COMMITQUEST v1.1.0
                      LEVEL UP BY SHIPPING REAL WORK
 
                  Aetherelic · Level 8 Repository Ranger
                  ━━━━━━━━━━━━━━━━━━━────  720/900 XP
 
-                 > /quests       active objectives
+                 > /profile      full journey card
+                   /quests       active objectives
                    /campaigns    tracked repositories
                    /chapters     campaign arcs and bosses
                    /badges       achievement collection
@@ -47,6 +48,25 @@ CommitQuest opens a full-screen terminal game with a clean launcher and persiste
 ```
 
 The CLI commands remain available for scripting and recovery, but the intended experience is the interactive application.
+
+## Prism interface
+
+CommitQuest 1.1 keeps the clean welcome screen and gives every secondary page a deliberately designed full-screen layout:
+
+- whitespace and section rules replace dense ASCII box grids
+- list/detail panes use the terminal's horizontal and vertical space
+- semantic colour distinguishes selection, progress, rewards, warnings, and blockers
+- the Profile screen combines level, title, streaks, badges, campaigns, objectives, and recent momentum
+- tall terminals distribute breathing room between sections instead of leaving the interface compressed at the top
+
+Every colour is owned by the selected palette. Matrix uses phosphor-green states, Catppuccin uses Mocha-native mauve, blue, green, yellow, and red, and Monochrome never escapes grayscale.
+
+Curated themes:
+
+- Tokyo Night, Arcane, Catppuccin Mocha, Everforest
+- Matrix, Nord, Rosé Pine, Gruvbox Dark
+- Dracula, Solarized Dark, Monochrome, Obsidian Ink
+- Synthwave, Amber Terminal, Iceberg, Cyberdeck
 
 ## Core features
 
@@ -290,8 +310,8 @@ Current verification target:
 
 ```text
 TypeScript build
-24+ test files
-100+ automated tests
+25+ test files
+110+ automated tests
 CLI lifecycle smoke tests
 npm package dry-run
 version and registry consistency audit
