@@ -1,6 +1,6 @@
 {
   "name": "commitquest",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Turn real Git progress into a private developer adventure.",
   "type": "module",
   "bin": {
@@ -19,7 +19,8 @@
     "test": "NODE_NO_WARNINGS=1 vitest run",
     "test:watch": "NODE_NO_WARNINGS=1 vitest",
     "check": "npm run build && npm test",
-    "prepublishOnly": "npm run check"
+    "prepublishOnly": "npm run check",
+    "prepare": "npm run build"
   },
   "keywords": [
     "git",
