@@ -3,6 +3,7 @@ import type { TuiModel, TuiScreen, TuiState } from "./types.js";
 
 export const SCREEN_ORDER: TuiScreen[] = [
   "home",
+  "profile",
   "quests",
   "campaigns",
   "chapters",
@@ -21,6 +22,7 @@ export const HOME_MENU: Array<{
   description: string;
   shortcut: string;
 }> = [
+  { screen: "profile", command: "/profile", title: "Profile", description: "full journey card and identity", shortcut: "enter" },
   { screen: "quests", command: "/quests", title: "Quest Board", description: "active objectives and rewards", shortcut: "enter" },
   { screen: "campaigns", command: "/campaigns", title: "Campaigns", description: "tracked repositories", shortcut: "enter" },
   { screen: "chapters", command: "/chapters", title: "Chapters", description: "campaign arcs and boss encounters", shortcut: "enter" },
@@ -96,6 +98,7 @@ export function initialTuiState(
     screen: "home",
     homeIndex: 0,
     selected: {
+      profile: 0,
       quests: 0,
       campaigns: 0,
       chapters: 0,
@@ -120,6 +123,7 @@ function wrap(value: number, count: number): number {
 export function itemCount(screen: TuiScreen, model: TuiModel): number {
   switch (screen) {
     case "home": return HOME_MENU.length;
+    case "profile": return 1;
     case "quests": return model.quests.length + model.customQuests.length;
     case "campaigns": return model.campaigns.length;
     case "chapters": return model.chapters?.length ?? 0;
@@ -193,12 +197,13 @@ export function transitionTui(state: TuiState, key: TuiKey, model: TuiModel): Tu
   if (key === "enter" && state.screen === "home") {
     return { state: { ...state, screen: HOME_MENU[state.homeIndex]?.screen ?? "quests" }, effect: "none" };
   }
+  if (key === "enter" && state.screen === "profile") return { state, effect: "none" };
   if (key === "enter" && state.screen === "themes") return { state, effect: "apply-theme" };
   if (key === "motion" && state.screen === "themes") return { state, effect: "toggle-motion" };
   if (key === "color" && state.screen === "themes") return { state, effect: "cycle-color" };
   if (key === "enter" && state.screen === "path") return { state, effect: "class-choose" };
   if (key === "enter" && state.screen === "share") return { state, effect: "share-export" };
-  if (key === "enter" && state.screen !== "progress") return { state, effect: "open-detail" };
+  if (key === "enter" && state.screen !== "progress" && state.screen !== "profile") return { state, effect: "open-detail" };
 
   if (key === "new" && state.screen === "quests") return { state, effect: "quest-create" };
   if (key === "new" && state.screen === "campaigns") return { state, effect: "campaign-add" };

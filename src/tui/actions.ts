@@ -196,6 +196,7 @@ export function availablePaletteEntries(model: TuiModel, state: TuiState): TuiPa
   const campaign = selectedCampaign(model, state);
   return [
     { id: "open-home", label: "Open Home", description: "Return to the launcher", shortcut: "Esc", enabled: true },
+    { id: "open-profile", label: "Open Profile", description: "View the full-screen journey card", enabled: true },
     { id: "open-quests", label: "Open Quest Board", description: "Browse active and completed quests", enabled: true },
     { id: "quest-create", label: "Create Quest", description: "Build a guided custom objective", shortcut: "N", enabled: true },
     { id: "quest-edit", label: "Edit Selected Quest", description: "Change an active custom quest", shortcut: "E", enabled: Boolean(quest && quest.status === "active") },
@@ -217,7 +218,7 @@ export function availablePaletteEntries(model: TuiModel, state: TuiState): TuiPa
     { id: "open-share", label: "Open Share Journey", description: "Preview privacy-safe exports", enabled: true },
     { id: "share-export", label: "Export Highlighted Journey Card", description: "Write the selected format locally", shortcut: "Enter", enabled: state.screen === "share" },
     { id: "open-themes", label: "Open Themes", description: "Preview and save a palette", shortcut: "T", enabled: true },
-    { id: "show-detail", label: "Open Full Detail", description: "Expand the selected item", shortcut: "Enter", enabled: state.screen !== "home" && state.screen !== "themes" && state.screen !== "progress" }
+    { id: "show-detail", label: "Open Full Detail", description: "Expand the selected item", shortcut: "Enter", enabled: state.screen !== "home" && state.screen !== "profile" && state.screen !== "themes" && state.screen !== "progress" }
   ];
 }
 
@@ -233,6 +234,7 @@ export function openTuiAction(state: TuiState, action: TuiActionId, model: TuiMo
   const campaign = selectedCampaign(model, state);
   switch (action) {
     case "open-home": return { ...state, screen: "home", overlay: null };
+    case "open-profile": return { ...state, screen: "profile", overlay: null };
     case "open-quests": return { ...state, screen: "quests", overlay: null };
     case "open-campaigns": return { ...state, screen: "campaigns", overlay: null };
     case "open-chapters": return { ...state, screen: "chapters", overlay: null };
@@ -243,7 +245,7 @@ export function openTuiAction(state: TuiState, action: TuiActionId, model: TuiMo
     case "open-share": return { ...state, screen: "share", overlay: null };
     case "open-themes": return { ...state, screen: "themes", overlay: null };
     case "show-detail":
-      if (state.screen === "home" || state.screen === "themes" || state.screen === "path" || state.screen === "share") return state;
+      if (state.screen === "home" || state.screen === "profile" || state.screen === "themes" || state.screen === "path" || state.screen === "share") return state;
       return { ...state, overlay: { kind: "detail", screen: state.screen } };
     case "quest-create": return { ...state, overlay: questForm(model) };
     case "quest-edit": return quest && quest.status === "active" ? { ...state, overlay: questForm(model, quest) } : state;

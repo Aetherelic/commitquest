@@ -3,7 +3,7 @@ import type { LevelProgress } from "../core/levels.js";
 import type { Profile } from "../core/profile.js";
 import type { StreakResult } from "../core/streak.js";
 
-export type TuiScreen = "home" | "quests" | "campaigns" | "chapters" | "achievements" | "progress" | "path" | "log" | "share" | "themes";
+export type TuiScreen = "home" | "profile" | "quests" | "campaigns" | "chapters" | "achievements" | "progress" | "path" | "log" | "share" | "themes";
 
 export interface TuiCampaign extends RepositoryRecord {
   commits: number;
@@ -74,6 +74,7 @@ export interface TuiModel {
 
 export type TuiActionId =
   | "open-home"
+  | "open-profile"
   | "open-quests"
   | "open-campaigns"
   | "open-chapters"
@@ -141,7 +142,7 @@ export interface TuiPaletteOverlay {
 
 export interface TuiDetailOverlay {
   kind: "detail";
-  screen: Exclude<TuiScreen, "home" | "themes">;
+  screen: Exclude<TuiScreen, "home" | "profile" | "themes">;
 }
 
 export interface TuiConfirmOverlay {
