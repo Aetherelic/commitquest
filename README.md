@@ -27,7 +27,7 @@ cq
 CommitQuest opens a full-screen terminal game with a clean launcher and persistent themes.
 
 ```text
-                         COMMITQUEST v0.5.0
+                         COMMITQUEST v1.0.0
                      LEVEL UP BY SHIPPING REAL WORK
 
                  Aetherelic · Level 8 Repository Ranger
@@ -150,6 +150,27 @@ cq backup list
 cq backup restore latest --yes
 ```
 
+### Stable-release essentials
+
+CommitQuest 1.0 completes the local application lifecycle:
+
+- persistent reduced-motion and colour preferences
+- shell completion generation for Bash, Zsh, and Fish
+- a local privacy audit with JSON output
+- preview-first cleanup for old backups and crash reports
+- safe local uninstallation that preserves progress by default
+- a manual page in the Nix and local installations
+- version-consistency and public-package verification through `npm run verify:release`
+
+```bash
+cq settings --motion reduced
+cq settings --color auto
+cq privacy
+cq cleanup
+cq completion fish
+cq uninstall --yes
+```
+
 ## Installation
 
 ### NixOS or Nix
@@ -166,7 +187,7 @@ Or launch without installing:
 nix run .
 ```
 
-The Nix package wraps its own Node runtime and adds Git to the runtime path.
+The Nix package wraps its own Node runtime, adds Git to the runtime path, and installs shell completions plus the `commitquest(1)` manual page.
 
 ### Local npm installation
 
@@ -175,7 +196,7 @@ npm ci
 ./scripts/install-local.sh
 ```
 
-The installer builds, runs the complete test suite, copies the package into `~/.local/lib/node_modules`, creates deterministic wrappers in `~/.local/bin`, and verifies the installed version.
+The installer builds, runs the complete test suite, copies the package into `~/.local/lib/node_modules`, creates deterministic wrappers in `~/.local/bin`, installs shell completions and the manual page, and verifies the installed version.
 
 Ensure the local bin directory is available:
 
@@ -226,6 +247,11 @@ cq share
 cq backup create|list|restore
 cq hook install|status|remove
 cq profile
+cq settings
+cq privacy [--json]
+cq cleanup [--apply]
+cq completion bash|zsh|fish
+cq uninstall --yes [--purge-data]
 cq doctor [--repair]
 cq version --verbose
 ```
@@ -264,10 +290,11 @@ Current verification target:
 
 ```text
 TypeScript build
-20+ test files
-90+ automated tests
-CLI smoke tests
+24+ test files
+100+ automated tests
+CLI lifecycle smoke tests
 npm package dry-run
+version and registry consistency audit
 Nix flake package check in CI
 ```
 

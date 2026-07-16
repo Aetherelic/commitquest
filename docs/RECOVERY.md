@@ -38,3 +38,15 @@ Repair mode:
 5. Records the repair timestamp.
 
 It does not guess missing repository paths or delete tracking data.
+
+
+## Retention cleanup
+
+Cleanup is a preview unless `--apply` is provided:
+
+```bash
+cq cleanup
+cq cleanup --apply --keep-backups 10 --keep-crashes 20
+```
+
+Generated share files are never removed by cleanup.

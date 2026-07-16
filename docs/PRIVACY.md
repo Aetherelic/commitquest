@@ -5,3 +5,13 @@ CommitQuest operates locally. It invokes the local `git` executable, stores deri
 Default journey exports contain aggregate progress only. They exclude repository paths, repository names, Git email addresses, commit hashes, and commit subjects. Campaign names are added only when `--include-projects` is explicitly supplied.
 
 Post-commit hooks invoke the locally installed CommitQuest CLI and preserve any pre-existing hook through a reversible backup.
+
+
+## Audit your installation
+
+```bash
+cq privacy
+cq privacy --json
+```
+
+The audit reports local storage locations and counts without exposing commit subjects or repository paths in its normal human-readable output.

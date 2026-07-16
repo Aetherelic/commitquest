@@ -1,0 +1,64 @@
+.TH COMMITQUEST 1 "July 2026" "CommitQuest 1.0.0" "User Commands"
+.SH NAME
+commitquest, cq \- turn local Git progress into a private developer adventure
+.SH SYNOPSIS
+.B cq
+.RI [ command ]
+.RI [ options ]
+.SH DESCRIPTION
+CommitQuest is a local-first terminal game that converts Git commits and releases into XP, quests, achievements, campaign chapters, and cosmetic developer paths. Repository contents and progress remain on the local machine.
+.SH PRIMARY COMMANDS
+.TP
+.B cq
+Open the interactive terminal application.
+.TP
+.B cq add PATH
+Track a local Git repository as a campaign.
+.TP
+.B cq scan
+Import new commits and releases from active campaigns.
+.TP
+.B cq doctor [--repair]
+Check or safely repair the local installation, database, hooks, and campaign paths.
+.TP
+.B cq backup create|list|restore
+Create and restore verified local backups.
+.TP
+.B cq privacy [--json]
+Audit stored local data and privacy-safe sharing defaults.
+.TP
+.B cq settings
+View or change theme, motion, and colour preferences.
+.TP
+.B cq completion SHELL
+Print shell completion for bash, zsh, or fish.
+.TP
+.B cq cleanup [--apply]
+Preview or remove old backups and crash reports.
+.TP
+.B cq uninstall --yes [--purge-data]
+Remove a local npm installation. Progress and settings are preserved unless --purge-data is supplied.
+.SH FILES
+.TP
+.I ~/.local/share/commitquest/commitquest.db
+Local SQLite progress database.
+.TP
+.I ~/.config/commitquest/settings.json
+Persistent theme and accessibility settings.
+.TP
+.I ~/.local/share/commitquest/backups/
+Verified backup snapshots.
+.SH ENVIRONMENT
+.TP
+.B COMMITQUEST_HOME
+Override all CommitQuest data and configuration paths.
+.TP
+.B NO_COLOR
+Disable colour when the colour preference is set to auto.
+.SH PRIVACY
+CommitQuest does not include a network upload service. Default share exports hide repository names, paths, Git email addresses, commit hashes, and commit subjects.
+.SH SEE ALSO
+.BR git (1),
+.BR node (1)
+.SH AUTHORS
+Made with <3 by Aetherelic.

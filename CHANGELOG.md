@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.0.0 — The Completed Quest
+
+### Added
+
+- Persistent reduced-motion and colour preferences
+- `cq settings` for theme and accessibility configuration
+- Bash, Zsh, and Fish completion generation through `cq completion`
+- `cq privacy` local-data audit with optional JSON output
+- Preview-first `cq cleanup` retention for backups and crash reports
+- Safe `cq uninstall` lifecycle with progress preserved by default
+- Local uninstaller script, manual page, and completion installation
+- Cross-file release verification through `npm run verify:release`
+
+### Changed
+
+- Promoted CommitQuest from the Odyssey preview channel to the stable channel
+- Nix and local installers now include documentation and shell integration
+- Reduced-motion mode disables decorative home-screen animation
+- Colour handling now supports auto, always, and never modes
+
+### Stability
+
+- 24 automated test files and 106 tests cover the complete local lifecycle
+- Release verification checks version consistency and blocks internal registry URLs
+- Cleanup is dry-run by default and uninstallation preserves user data unless explicitly purged
+
 ## 0.5.0 — Odyssey
 
 ### Added
