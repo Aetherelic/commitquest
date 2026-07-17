@@ -1,0 +1,65 @@
+name: Bug report
+description: Report a reproducible problem with CommitQuest
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve CommitQuest. Please avoid including private repository information.
+
+  - type: input
+    id: version
+    attributes:
+      label: CommitQuest version
+      placeholder: "For example: 1.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - NixOS
+        - Other Linux distribution
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Run ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Remove private paths, email addresses and repository information.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked for an existing issue describing this problem.
+          required: true
+        - label: I removed private information from the report.
+          required: true
