@@ -186,7 +186,7 @@ Selections, rewards, warnings and errors always use colours defined by the activ
 
 ## ✦ Local-first by design
 
-CommitQuest stores progress in a local SQLite database. Default exports exclude repository paths, Git emails and commit subjects; project names are only included when explicitly requested.
+CommitQuest stores progress in a local SQLite database. Default exports exclude repository paths, Git emails and commit subjects; project names are only included when explicitly requested!
 
 ```bash
 cq privacy
